@@ -2,63 +2,674 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>糖尿病共照網 - 驗證成功</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧用藥安全監測小幫手 - 授權結果</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
-        /* 延用之前的 UI 樣式 ... (此處省略部分 CSS 以保持簡潔) */
-        :root { --primary-color: #3498db; --bg-color: #f4f7f6; }
-        body { font-family: sans-serif; background: var(--bg-color); padding: 40px; text-align: center; }
-        .success-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; min-width: 400px; }
-        .token-box { background: #eee; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; word-break: break-all; margin-top: 20px; text-align: left; }
+        :root {
+            --blue-deep: #0a2463;
+            --blue-mid: #1a6fc4;
+            --blue-bright: #2c8ef8;
+            --blue-light: #ebf4ff;
+            --teal: #0891b2;
+            --teal-light: #e0f7fa;
+            --green: #059669;
+            --green-mid: #10b981;
+            --green-light: #d1fae5;
+            --red: #dc2626;
+            --red-light: #fef2f2;
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --gray-50: #f8fafd;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(10,36,99,0.06);
+            --shadow-md: 0 4px 16px rgba(10,36,99,0.10);
+            --shadow-lg: 0 16px 48px rgba(10,36,99,0.14);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --t: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            background: var(--gray-50);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, #c5d5e8 1px, transparent 1px);
+            background-size: 28px 28px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .top-stripe {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blue-deep), var(--blue-bright), var(--teal));
+            z-index: 100;
+        }
+
+        .page-wrapper {
+            width: 100%;
+            max-width: 580px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── App Header ─── */
+        .app-header {
+            text-align: center;
+            margin-bottom: 24px;
+            animation: fadeDown 0.5s ease both;
+        }
+        .icon-wrap {
+            width: 68px; height: 68px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .icon-wrap.loading { background: linear-gradient(135deg, var(--blue-mid), var(--teal)); box-shadow: 0 8px 24px rgba(26,111,196,0.28); }
+        .icon-wrap.success { background: linear-gradient(135deg, var(--green), var(--green-mid)); box-shadow: 0 8px 24px rgba(5,150,105,0.28); }
+        .icon-wrap.error { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 8px 24px rgba(220,38,38,0.22); }
+        .icon-wrap i { font-size: 28px; color: white; }
+
+        .app-header h1 { font-size: 20px; font-weight: 700; color: var(--gray-800); letter-spacing: -0.3px; margin-bottom: 4px; }
+        .app-header p { font-size: 13px; color: var(--gray-400); }
+
+        /* ─── Main Card ─── */
+        .main-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            animation: fadeUp 0.45s ease 0.1s both;
+        }
+
+        /* Card band */
+        .card-band {
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-band.loading-band { background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid)); }
+        .card-band.success-band { background: linear-gradient(135deg, #065f46, var(--green)); }
+        .card-band.error-band { background: linear-gradient(135deg, #7f1d1d, var(--red)); }
+        .card-band i { color: rgba(255,255,255,0.7); font-size: 15px; }
+        .card-band h2 { font-size: 14px; font-weight: 600; color: white; letter-spacing: 0.2px; }
+        .card-band .status-pill {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.3px;
+        }
+        .card-band.loading-band .status-pill { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
+        .card-band.success-band .status-pill { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .card-band.error-band .status-pill { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
+
+        /* ─── Loading State ─── */
+        .loading-section {
+            padding: 40px 24px;
+            text-align: center;
+        }
+        .spinner-ring {
+            width: 52px; height: 52px;
+            border: 3px solid var(--gray-100);
+            border-top-color: var(--blue-mid);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 20px;
+        }
+        .loading-section h3 { font-size: 16px; font-weight: 600; color: var(--gray-800); margin-bottom: 6px; }
+        .loading-section p { font-size: 13px; color: var(--gray-400); }
+
+        /* ─── Success State ─── */
+        .result-section { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+        /* Info row */
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-100);
+        }
+        .info-row .row-icon {
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .row-icon.blue { background: var(--blue-light); color: var(--blue-mid); }
+        .row-icon.green { background: var(--green-light); color: var(--green); }
+        .row-icon.teal { background: var(--teal-light); color: var(--teal); }
+        .row-icon.amber { background: var(--amber-light); color: var(--amber); }
+
+        .row-content { flex: 1; min-width: 0; }
+        .row-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.9px;
+            text-transform: uppercase;
+            color: var(--gray-400);
+            margin-bottom: 3px;
+        }
+        .row-value {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--gray-800);
+            word-break: break-all;
+        }
+        .row-value.mono {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--gray-700);
+        }
+
+        /* Token reveal box */
+        .token-section { display: flex; flex-direction: column; gap: 8px; }
+        .token-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .token-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.9px;
+            text-transform: uppercase;
+            color: var(--gray-400);
+        }
+        .token-toggle-btn {
+            font-size: 11.5px;
+            color: var(--blue-mid);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: var(--t);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: "Inter", sans-serif;
+        }
+        .token-toggle-btn:hover { background: var(--blue-light); }
+
+        .token-box {
+            background: var(--gray-800);
+            border-radius: var(--radius-xs);
+            padding: 12px 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        .token-box code {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #7dd3fc;
+            word-break: break-all;
+            line-height: 1.6;
+            display: block;
+        }
+        .token-box code.masked { filter: blur(5px); user-select: none; }
+        .token-copy-btn {
+            position: absolute;
+            top: 8px; right: 8px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: rgba(255,255,255,0.5);
+            border-radius: 4px;
+            width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: var(--t);
+            font-size: 11px;
+        }
+        .token-copy-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Scope tags display */
+        .scope-display { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+        .scope-chip {
+            font-size: 10.5px;
+            font-family: 'Courier New', monospace;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--blue-light);
+            color: var(--blue-mid);
+            border: 1px solid #bfdbfe;
+        }
+
+        /* Divider */
+        .divider { height: 1px; background: var(--gray-100); }
+
+        /* Next steps */
+        .next-steps {
+            padding: 18px 24px;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-100);
+        }
+        .next-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 1.1px;
+            text-transform: uppercase;
+            color: var(--gray-400);
+            margin-bottom: 12px;
+        }
+        .action-list { display: flex; flex-direction: column; gap: 8px; }
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            transition: var(--t);
+            text-decoration: none;
+        }
+        .action-item:hover { border-color: var(--blue-bright); background: var(--blue-light); }
+        .action-item i:first-child { color: var(--blue-mid); font-size: 13px; width: 16px; text-align: center; }
+        .action-item span { font-size: 13px; color: var(--gray-700); flex: 1; }
+        .action-item .arrow { color: var(--gray-300); font-size: 11px; }
+        .action-item:hover .arrow { color: var(--blue-mid); }
+
+        /* ─── Error State ─── */
+        .error-section {
+            padding: 32px 24px;
+            text-align: center;
+        }
+        .error-icon {
+            width: 56px; height: 56px;
+            background: #fef2f2;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .error-icon i { font-size: 22px; color: var(--red); }
+        .error-section h3 { font-size: 16px; font-weight: 600; color: var(--gray-800); margin-bottom: 8px; }
+        .error-section p { font-size: 13px; color: var(--gray-400); line-height: 1.6; margin-bottom: 4px; }
+
+        .error-detail {
+            margin-top: 16px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-xs);
+            padding: 12px 14px;
+            text-align: left;
+        }
+        .error-detail code {
+            font-family: 'Courier New', monospace;
+            font-size: 11.5px;
+            color: var(--red);
+            word-break: break-all;
+        }
+
+        .error-actions {
+            padding: 18px 24px;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-100);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn-back {
+            background: linear-gradient(135deg, var(--blue-mid), var(--blue-bright));
+            color: white;
+            border: none;
+            border-radius: var(--radius-xs);
+            padding: 10px 22px;
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            cursor: pointer;
+            transition: var(--t);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(26,111,196,0.28);
+        }
+        .btn-back:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(26,111,196,0.36); }
+        .btn-retry {
+            background: white;
+            color: var(--gray-600);
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-xs);
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            cursor: pointer;
+            transition: var(--t);
+        }
+        .btn-retry:hover { border-color: var(--blue-bright); color: var(--blue-mid); }
+
+        /* ─── Footer ─── */
+        .page-footer {
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeUp 0.5s ease 0.25s both;
+        }
+        .page-footer p { font-size: 11.5px; color: var(--gray-400); line-height: 1.7; }
+
+        /* ─── Animations ─── */
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* State sections */
+        #state-loading { display: block; }
+        #state-success { display: none; }
+        #state-error { display: none; }
     </style>
 </head>
 <body>
+<div class="top-stripe"></div>
 
-<div class="success-card">
-    <i class="fas fa-check-circle fa-4x" style="color: #2ecc71; margin-bottom: 20px;"></i>
-    <h2>第二階段測試：OAuth 授權成功</h2>
-    <p>系統已收到授權碼 (Authorization Code)，正在交換 Access Token...</p>
-    
-    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-    
-    <div id="patient-info" style="text-align: left; display: none;">
-        <p><strong><i class="fas fa-id-badge"></i> 病患 ID:</strong> <span id="p-id">讀取中...</span></p>
-        <p><strong><i class="fas fa-user"></i> 授權範圍:</strong> <span id="p-scope" style="font-size: 12px; color: #666;">讀取中...</span></p>
+<div class="page-wrapper">
+
+    <!-- Header (dynamic) -->
+    <div class="app-header" id="app-header">
+        <div class="icon-wrap loading" id="header-icon">
+            <i class="fas fa-pills" id="header-icon-i"></i>
+        </div>
+        <h1 id="header-title">智慧用藥安全監測小幫手</h1>
+        <p id="header-sub">正在處理 OAuth 授權回呼...</p>
     </div>
 
-    <div id="status-msg" style="color: #3498db; margin-top: 10px;">
-        <i class="fas fa-spinner fa-spin"></i> 正在通訊中...
+    <!-- Main Card -->
+    <div class="main-card">
+
+        <!-- Card Band (dynamic) -->
+        <div class="card-band loading-band" id="card-band">
+            <i class="fas fa-shield-halved"></i>
+            <h2 id="band-title">Token 交換中</h2>
+            <div class="status-pill" id="band-pill">Processing...</div>
+        </div>
+
+        <!-- ─── Loading State ─── -->
+        <div id="state-loading">
+            <div class="loading-section">
+                <div class="spinner-ring"></div>
+                <h3>正在交換 Access Token</h3>
+                <p>系統已收到 Authorization Code，<br>正透過安全通道與伺服器交換憑證...</p>
+            </div>
+        </div>
+
+        <!-- ─── Success State ─── -->
+        <div id="state-success" style="display:none; animation: fadeIn 0.4s ease;">
+            <div class="result-section">
+                <!-- Patient ID -->
+                <div class="info-row">
+                    <div class="row-icon blue"><i class="fas fa-id-badge"></i></div>
+                    <div class="row-content">
+                        <div class="row-label">Patient ID</div>
+                        <div class="row-value" id="res-patient-id">—</div>
+                    </div>
+                </div>
+                <!-- User -->
+                <div class="info-row" id="row-user" style="display:none;">
+                    <div class="row-icon teal"><i class="fas fa-user-circle"></i></div>
+                    <div class="row-content">
+                        <div class="row-label">FHIR User</div>
+                        <div class="row-value mono" id="res-user">—</div>
+                    </div>
+                </div>
+                <!-- Token Expiry -->
+                <div class="info-row">
+                    <div class="row-icon green"><i class="fas fa-clock-rotate-left"></i></div>
+                    <div class="row-content">
+                        <div class="row-label">Token 有效期限</div>
+                        <div class="row-value" id="res-expiry">—</div>
+                    </div>
+                </div>
+                <!-- Scopes -->
+                <div class="info-row">
+                    <div class="row-icon amber"><i class="fas fa-key"></i></div>
+                    <div class="row-content">
+                        <div class="row-label">授權範圍 (Scopes)</div>
+                        <div class="scope-display" id="res-scopes"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Token Section -->
+            <div class="result-section" style="padding-top:16px;">
+                <div class="token-section">
+                    <div class="token-header">
+                        <span class="token-label">Access Token</span>
+                        <button class="token-toggle-btn" onclick="toggleToken()">
+                            <i class="fas fa-eye" id="token-eye-icon"></i>
+                            <span id="token-toggle-label">顯示</span>
+                        </button>
+                    </div>
+                    <div class="token-box">
+                        <code id="token-display" class="masked">loading...</code>
+                        <button class="token-copy-btn" onclick="copyToken()" title="複製 Token">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div style="font-size:11px; color:var(--gray-400); margin-top:4px;">
+                        <i class="fas fa-triangle-exclamation" style="color:var(--amber); margin-right:4px;"></i>
+                        Access Token 含有敏感憑證，請勿於生產環境顯示或記錄
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <div class="next-label">後續操作</div>
+                <div class="action-list">
+                    <a class="action-item" onclick="testPatientRead()">
+                        <i class="fas fa-person-dots-from-line"></i>
+                        <span>讀取病患基本資料（Patient）</span>
+                        <i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <a class="action-item" onclick="testMedRequest()">
+                        <i class="fas fa-prescription"></i>
+                        <span>查詢用藥處方（MedicationRequest）</span>
+                        <i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <a class="action-item" onclick="testObservation()">
+                        <i class="fas fa-flask"></i>
+                        <span>查詢檢驗結果（Observation / HbA1c）</span>
+                        <i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Error State ─── -->
+        <div id="state-error" style="display:none; animation: fadeIn 0.4s ease;">
+            <div class="error-section">
+                <div class="error-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                <h3>授權失敗</h3>
+                <p>OAuth Token 交換過程中發生錯誤，</p>
+                <p>請確認授權參數設定並重新嘗試。</p>
+                <div class="error-detail">
+                    <code id="error-msg">未知錯誤</code>
+                </div>
+            </div>
+            <div class="error-actions">
+                <button class="btn-retry" onclick="window.location.reload()">
+                    <i class="fas fa-rotate-left" style="margin-right:6px;"></i>重新整理
+                </button>
+                <button class="btn-back" onclick="window.location.href='launch.html'">
+                    <i class="fas fa-arrow-left"></i>返回授權頁面
+                </button>
+            </div>
+        </div>
+
     </div>
 
-    <div id="debug-token" class="token-box" style="display: none;"></div>
+    <!-- Footer -->
+    <div class="page-footer">
+        <p>SMART on FHIR 第二階段授權驗證 ｜ Client ID: cc344727-6f90-496c-94fd-c7829aa9a51d</p>
+    </div>
 </div>
 
 <script>
-    // 當頁面載入時，fhirclient 會自動尋找 URL 中的 code 並嘗試與伺服器交換 Token
+    let _client = null;
+    let _tokenRevealed = false;
+    let _accessToken = '';
+
+    // ─── State rendering ───
+    function renderLoading() {
+        document.getElementById('state-loading').style.display = 'block';
+        document.getElementById('state-success').style.display = 'none';
+        document.getElementById('state-error').style.display = 'none';
+    }
+
+    function renderSuccess(client) {
+        _client = client;
+        const tokenResp = client.state.tokenResponse;
+        _accessToken = tokenResp.access_token || '';
+
+        // Header
+        document.getElementById('header-icon').className = 'icon-wrap success';
+        document.getElementById('header-icon-i').className = 'fas fa-check-circle';
+        document.getElementById('header-sub').textContent = 'OAuth 授權驗證成功';
+        document.getElementById('card-band').className = 'card-band success-band';
+        document.getElementById('band-title').textContent = '授權成功';
+        document.getElementById('band-pill').textContent = '✓ Verified';
+
+        // Patient ID
+        const patientId = client.patient?.id || tokenResp.patient || '（無 Patient Context）';
+        document.getElementById('res-patient-id').textContent = patientId;
+
+        // FHIR User
+        if (tokenResp.fhirUser || client.user?.fhirUser) {
+            document.getElementById('res-user').textContent = tokenResp.fhirUser || client.user.fhirUser;
+            document.getElementById('row-user').style.display = 'flex';
+        }
+
+        // Expiry
+        const expiresIn = tokenResp.expires_in;
+        if (expiresIn) {
+            const expDate = new Date(Date.now() + expiresIn * 1000);
+            document.getElementById('res-expiry').textContent =
+                `${expiresIn} 秒 （${expDate.toLocaleTimeString('zh-TW')} 後失效）`;
+        } else {
+            document.getElementById('res-expiry').textContent = '未提供到期時間';
+        }
+
+        // Scopes
+        const scopeContainer = document.getElementById('res-scopes');
+        const scopes = (tokenResp.scope || '').split(/\s+/).filter(Boolean);
+        scopeContainer.innerHTML = scopes.map(s =>
+            `<span class="scope-chip">${s}</span>`
+        ).join('');
+
+        // Token
+        document.getElementById('token-display').textContent = _accessToken
+            ? _accessToken.substring(0, 120) + '...'
+            : '（無法取得）';
+
+        document.getElementById('state-loading').style.display = 'none';
+        document.getElementById('state-success').style.display = 'block';
+        document.getElementById('state-error').style.display = 'none';
+    }
+
+    function renderError(err) {
+        document.getElementById('header-icon').className = 'icon-wrap error';
+        document.getElementById('header-icon-i').className = 'fas fa-times-circle';
+        document.getElementById('header-sub').textContent = 'OAuth 授權失敗';
+        document.getElementById('card-band').className = 'card-band error-band';
+        document.getElementById('band-title').textContent = '授權失敗';
+        document.getElementById('band-pill').textContent = '✗ Failed';
+        document.getElementById('error-msg').textContent = err.message || String(err);
+
+        document.getElementById('state-loading').style.display = 'none';
+        document.getElementById('state-success').style.display = 'none';
+        document.getElementById('state-error').style.display = 'block';
+    }
+
+    // ─── Token toggle ───
+    function toggleToken() {
+        _tokenRevealed = !_tokenRevealed;
+        const code = document.getElementById('token-display');
+        code.classList.toggle('masked', !_tokenRevealed);
+        document.getElementById('token-eye-icon').className = _tokenRevealed ? 'fas fa-eye-slash' : 'fas fa-eye';
+        document.getElementById('token-toggle-label').textContent = _tokenRevealed ? '隱藏' : '顯示';
+    }
+
+    function copyToken() {
+        navigator.clipboard.writeText(_accessToken).then(() => {
+            const btn = document.querySelector('.token-copy-btn');
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            btn.style.color = '#6ee7b7';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; btn.style.color = ''; }, 1800);
+        });
+    }
+
+    // ─── FHIR API test calls ───
+    function testPatientRead() {
+        if (!_client) return alert('尚未取得 Client，請重新授權。');
+        _client.request('Patient/' + (_client.patient?.id || ''))
+            .then(pt => alert('Patient: ' + JSON.stringify(pt, null, 2)))
+            .catch(e => alert('讀取失敗：' + e.message));
+    }
+
+    function testMedRequest() {
+        if (!_client) return alert('尚未取得 Client，請重新授權。');
+        _client.request('MedicationRequest?patient=' + (_client.patient?.id || ''))
+            .then(bundle => alert('MedicationRequest Bundle:\n' + JSON.stringify(bundle, null, 2).substring(0,800)))
+            .catch(e => alert('讀取失敗：' + e.message));
+    }
+
+    function testObservation() {
+        if (!_client) return alert('尚未取得 Client，請重新授權。');
+        _client.request('Observation?patient=' + (_client.patient?.id || '') + '&code=4548-4')
+            .then(bundle => alert('Observation (HbA1c):\n' + JSON.stringify(bundle, null, 2).substring(0,800)))
+            .catch(e => alert('讀取失敗：' + e.message));
+    }
+
+    // ─── Init ───
+    renderLoading();
     FHIR.oauth2.ready()
-        .then(client => {
-            console.log("Client is ready:", client);
-            document.getElementById('status-msg').innerHTML = "Access Token 取得成功！";
-            document.getElementById('patient-info').style.display = 'block';
-            
-            // 顯示目前登入的 Context 資訊
-            document.getElementById('p-id').innerText = client.patient.id;
-            document.getElementById('p-scope').innerText = client.state.tokenResponse.scope;
-
-            // 如果你想看 Access Token 的內容 (測試階段建議顯示，生產環境請隱藏)
-            document.getElementById('debug-token').style.display = 'block';
-            document.getElementById('debug-token').innerText = "Access Token: " + client.state.tokenResponse.access_token;
-
-            // 這裡可以開始呼叫糖尿病共照網的品質指標 API
-            // 例如: client.request("Observation?category=laboratory&code=4548-4")
-        })
-        .catch(error => {
-            console.error("OAuth Exchange Error:", error);
-            document.getElementById('status-msg').style.color = "#e74c3c";
-            document.getElementById('status-msg').innerHTML = "<i class='fas fa-times-circle'></i> 交換失敗：" + error.message;
+        .then(client => renderSuccess(client))
+        .catch(err => {
+            console.error('OAuth Error:', err);
+            renderError(err);
         });
 </script>
-
 </body>
 </html>

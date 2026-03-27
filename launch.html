@@ -4,143 +4,870 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智慧用藥安全監測小幫手 - 啟動授權</title>
-    
-    <!-- SMART on FHIR JavaScript Client -->
     <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
-    
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    
     <style>
+        :root {
+            --blue-deep: #0a2463;
+            --blue-mid: #1a6fc4;
+            --blue-bright: #2c8ef8;
+            --blue-light: #ebf4ff;
+            --teal: #0891b2;
+            --teal-light: #e0f7fa;
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --green: #059669;
+            --green-light: #d1fae5;
+            --red: #dc2626;
+            --gray-50: #f8fafd;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(10,36,99,0.06);
+            --shadow-md: 0 4px 16px rgba(10,36,99,0.10);
+            --shadow-lg: 0 16px 48px rgba(10,36,99,0.14);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --t: all 0.2s cubic-bezier(0.4,0,0.2,1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: "Noto Sans TC", system-ui, sans-serif;
-            background: linear-gradient(135deg, #f0f4f8, #e0e7ff);
-            height: 100vh;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            background: var(--gray-50);
+            min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 32px 20px;
+            position: relative;
         }
-        .launch-card {
-            max-width: 480px;
+
+        /* Subtle dot grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, #c5d5e8 1px, transparent 1px);
+            background-size: 28px 28px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* Top accent stripe */
+        .top-stripe {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blue-deep) 0%, var(--blue-bright) 50%, var(--teal) 100%);
+            z-index: 100;
+        }
+
+        .page-wrapper {
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── Header ─── */
+        .app-header {
+            text-align: center;
+            margin-bottom: 24px;
+            animation: fadeDown 0.5s ease both;
+        }
+        .icon-wrap {
+            width: 68px; height: 68px;
+            background: linear-gradient(135deg, var(--blue-mid), var(--teal));
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px rgba(26,111,196,0.28);
+        }
+        .icon-wrap i { font-size: 28px; color: white; }
+        .app-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-800);
+            letter-spacing: -0.3px;
+            margin-bottom: 4px;
+        }
+        .app-header p { font-size: 13px; color: var(--gray-400); }
+
+        /* ─── Main Card ─── */
+        .main-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            animation: fadeUp 0.45s ease 0.1s both;
+        }
+
+        /* Card header band */
+        .card-band {
+            background: linear-gradient(135deg, var(--blue-deep) 0%, var(--blue-mid) 100%);
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-band i { color: rgba(255,255,255,0.7); font-size: 15px; }
+        .card-band h2 { font-size: 14px; font-weight: 600; color: white; letter-spacing: 0.2px; }
+        .card-band .step-pill {
+            margin-left: auto;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.85);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 10px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 123, 255, 0.15);
+            letter-spacing: 0.3px;
         }
-        .logo-icon {
-            font-size: 4.5rem;
-            color: #007BFF;
+
+        /* ─── Mode selector ─── */
+        .mode-section { padding: 20px 24px 16px; }
+        .section-eyebrow {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 1.3px;
+            text-transform: uppercase;
+            color: var(--gray-400);
+            margin-bottom: 12px;
+        }
+
+        .mode-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .mode-card {
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: var(--t);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: relative;
+            overflow: hidden;
+            background: var(--gray-50);
+        }
+        .mode-card::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: transparent;
+            border-radius: 3px 0 0 3px;
+            transition: var(--t);
+        }
+        .mode-card:hover { background: var(--white); border-color: var(--blue-bright); }
+        .mode-card:hover::after { background: var(--blue-bright); }
+        .mode-card.active { background: var(--blue-light); border-color: var(--blue-mid); }
+        .mode-card.active::after { background: var(--blue-mid); }
+
+        .mode-icon-box {
+            width: 38px; height: 38px;
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+            transition: var(--t);
+        }
+        .mode-ehr .mode-icon-box { background: var(--blue-light); color: var(--blue-mid); }
+        .mode-standalone .mode-icon-box { background: var(--teal-light); color: var(--teal); }
+        .mode-backend .mode-icon-box { background: var(--amber-light); color: var(--amber); }
+
+        .mode-text { flex: 1; }
+        .mode-text h3 {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 2px;
+        }
+        .mode-badge {
+            font-size: 9.5px;
+            font-weight: 600;
+            padding: 1.5px 7px;
+            border-radius: 20px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .badge-ehr { background: var(--blue-light); color: var(--blue-mid); }
+        .badge-standalone { background: var(--teal-light); color: var(--teal); }
+        .badge-backend { background: var(--amber-light); color: var(--amber); }
+
+        .mode-text p { font-size: 11.5px; color: var(--gray-400); line-height: 1.5; }
+
+        .mode-radio {
+            width: 17px; height: 17px;
+            border-radius: 50%;
+            border: 2px solid var(--gray-300);
+            flex-shrink: 0;
+            transition: var(--t);
+            position: relative;
+        }
+        .mode-card.active .mode-radio {
+            border-color: var(--blue-mid);
+            background: var(--blue-mid);
+        }
+        .mode-card.active .mode-radio::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 5px; height: 5px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        /* ─── Divider ─── */
+        .divider { height: 1px; background: var(--gray-100); margin: 0 24px; }
+
+        /* ─── Form fields ─── */
+        .form-section { padding: 20px 24px; }
+
+        .fields-title {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 1.3px;
+            text-transform: uppercase;
+            color: var(--gray-400);
+            margin-bottom: 14px;
+        }
+
+        /* Mode panels */
+        .mode-panel { display: none; flex-direction: column; gap: 14px; }
+        .mode-panel.visible { display: flex; animation: fadeIn 0.25s ease; }
+
+        .field-group { display: flex; flex-direction: column; gap: 5px; }
+
+        .field-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .field-label i { color: var(--gray-400); font-size: 11px; width: 14px; text-align: center; }
+        .required-star { color: var(--red); margin-left: 1px; }
+
+        .field-hint { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+        input[type="text"], input[type="url"], textarea, select {
+            width: 100%;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            font-size: 13px;
+            color: var(--gray-800);
+            background: var(--gray-50);
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-xs);
+            padding: 9px 12px;
+            transition: var(--t);
+            outline: none;
+        }
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--blue-bright);
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(44,142,248,0.12);
+        }
+        textarea { resize: vertical; min-height: 72px; font-size: 12px; line-height: 1.6; }
+
+        /* Default values style */
+        input.prefilled, textarea.prefilled {
+            color: var(--gray-500);
+            font-style: italic;
+        }
+        input.user-edited, textarea.user-edited { color: var(--gray-800); font-style: normal; }
+
+        .scope-tags {
+            display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
+        }
+        .scope-tag {
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            padding: 3px 9px;
+            border-radius: 4px;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            border: 1px solid var(--gray-200);
+            cursor: pointer;
+            transition: var(--t);
+            user-select: none;
+        }
+        .scope-tag:hover { background: var(--blue-light); border-color: var(--blue-bright); color: var(--blue-mid); }
+        .scope-tag.selected { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue-mid); font-weight: 600; }
+
+        /* Info box */
+        .info-box {
+            background: var(--blue-light);
+            border: 1px solid #bfdbfe;
+            border-radius: var(--radius-xs);
+            padding: 10px 13px;
+            display: flex;
+            gap: 9px;
+            align-items: flex-start;
+        }
+        .info-box i { color: var(--blue-mid); font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+        .info-box p { font-size: 11.5px; color: var(--blue-mid); line-height: 1.5; }
+
+        .warn-box {
+            background: var(--amber-light);
+            border: 1px solid #fde68a;
+            border-radius: var(--radius-xs);
+            padding: 10px 13px;
+            display: flex;
+            gap: 9px;
+            align-items: flex-start;
+        }
+        .warn-box i { color: var(--amber); font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+        .warn-box p { font-size: 11.5px; color: var(--amber); line-height: 1.5; }
+
+        /* JWKS result box */
+        .jwks-result {
+            display: none;
+            background: var(--green-light);
+            border: 1px solid #6ee7b7;
+            border-radius: var(--radius-xs);
+            padding: 12px 14px;
+        }
+        .jwks-result.show { display: block; animation: fadeIn 0.3s ease; }
+        .jwks-result p { font-size: 12px; color: var(--green); margin-bottom: 6px; font-weight: 500; }
+        .jwks-result .url-out {
+            font-family: 'Courier New', monospace;
+            font-size: 11.5px;
+            color: var(--gray-700);
+            background: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            border: 1px solid #a7f3d0;
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .jwks-result .url-out button {
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--gray-400);
+            transition: var(--t);
+            padding: 2px;
+        }
+        .jwks-result .url-out button:hover { color: var(--blue-mid); }
+
+        /* ─── Footer actions ─── */
+        .card-footer {
+            padding: 18px 24px;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .footer-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .footer-meta span {
+            font-size: 10.5px;
+            color: var(--gray-400);
+            font-family: 'Courier New', monospace;
+        }
+        .footer-meta .client-id-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--gray-300);
+            font-family: "Inter", sans-serif;
+        }
+
+        .btn-launch {
+            background: linear-gradient(135deg, var(--blue-mid), var(--blue-bright));
+            color: white;
+            border: none;
+            border-radius: var(--radius-xs);
+            padding: 11px 24px;
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            cursor: pointer;
+            transition: var(--t);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(26,111,196,0.3);
+            white-space: nowrap;
+        }
+        .btn-launch:hover {
+            background: linear-gradient(135deg, var(--blue-deep), var(--blue-mid));
+            box-shadow: 0 6px 18px rgba(26,111,196,0.38);
+            transform: translateY(-1px);
+        }
+        .btn-launch:active { transform: translateY(0); }
+        .btn-launch:disabled {
+            background: var(--gray-200);
+            color: var(--gray-400);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-600);
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-xs);
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: "Inter", "Noto Sans TC", sans-serif;
+            cursor: pointer;
+            transition: var(--t);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .btn-secondary:hover { border-color: var(--blue-bright); color: var(--blue-mid); }
+
+        /* ─── Status alert ─── */
+        .status-alert {
+            margin: 0 24px 16px;
+            border-radius: var(--radius-xs);
+            padding: 10px 14px;
+            font-size: 12.5px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-alert.show { display: flex; animation: fadeIn 0.25s ease; }
+        .status-alert.info { background: var(--blue-light); color: var(--blue-mid); border: 1px solid #bfdbfe; }
+        .status-alert.error { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+        .status-alert.success { background: var(--green-light); color: var(--green); border: 1px solid #6ee7b7; }
+
+        /* ─── Footer note ─── */
+        .page-footer {
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeUp 0.5s ease 0.25s both;
+        }
+        .page-footer p { font-size: 11.5px; color: var(--gray-400); line-height: 1.7; }
+        .page-footer a { color: var(--blue-mid); text-decoration: none; }
+        .page-footer a:hover { text-decoration: underline; }
+
+        /* ─── Animations ─── */
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
 <body>
+<div class="top-stripe"></div>
 
-    <div class="container">
-        <div class="launch-card card mx-auto">
-            <div class="card-body p-5 text-center">
-                <!-- Logo & Title -->
-                <div class="mb-4">
-                    <i class="fas fa-pills logo-icon"></i>
+<div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="app-header">
+        <div class="icon-wrap"><i class="fas fa-pills"></i></div>
+        <h1>智慧用藥安全監測小幫手</h1>
+        <p>SMART on FHIR 第二階段 OAuth 授權驗證</p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="main-card">
+
+        <!-- Band -->
+        <div class="card-band">
+            <i class="fas fa-shield-halved"></i>
+            <h2>選擇授權模式</h2>
+            <div class="step-pill">Step 1 of 2</div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="mode-section">
+            <div class="section-eyebrow">Launch Mode</div>
+            <div class="mode-list">
+                <!-- EHR Launch -->
+                <div class="mode-card mode-ehr active" onclick="selectMode('ehr')">
+                    <div class="mode-icon-box"><i class="fas fa-hospital"></i></div>
+                    <div class="mode-text">
+                        <h3>EHR Launch <span class="mode-badge badge-ehr">EHR</span></h3>
+                        <p>由私人 Launcher 啟動，需提供 Launch URL、Redirect URI 與 Scopes</p>
+                    </div>
+                    <div class="mode-radio"></div>
                 </div>
-                <h2 class="mb-2">智慧用藥安全監測小幫手</h2>
-                <p class="text-muted mb-4">請點擊下方按鈕，從 EHR 系統啟動授權</p>
+                <!-- Standalone Launch -->
+                <div class="mode-card mode-standalone" onclick="selectMode('standalone')">
+                    <div class="mode-icon-box"><i class="fas fa-browser"></i></div>
+                    <div class="mode-text">
+                        <h3>Standalone Launch <span class="mode-badge badge-standalone">Standalone</span></h3>
+                        <p>直接於瀏覽器輸入 Redirect URI，手動設定 ISS 指向私人 Launcher</p>
+                    </div>
+                    <div class="mode-radio"></div>
+                </div>
+                <!-- Backend Service -->
+                <div class="mode-card mode-backend" onclick="selectMode('backend')">
+                    <div class="mode-icon-box"><i class="fas fa-server"></i></div>
+                    <div class="mode-text">
+                        <h3>Backend Service <span class="mode-badge badge-backend">M2M</span></h3>
+                        <p>提供 JWKS 或 JWKS URL，系統將產出專屬 FHIR Server URL 供整合使用</p>
+                    </div>
+                    <div class="mode-radio"></div>
+                </div>
+            </div>
+        </div>
 
-                <!-- 狀態訊息 -->
-                <div id="status" class="alert alert-info d-none">
-                    正在準備授權流程...
+        <div class="divider"></div>
+
+        <!-- Form Fields -->
+        <div class="form-section">
+            <div class="fields-title">填寫授權參數</div>
+
+            <!-- ── EHR Launch Panel ── -->
+            <div class="mode-panel visible" id="panel-ehr">
+                <div class="field-group">
+                    <label class="field-label">
+                        <i class="fas fa-link"></i> Launch URL <span class="required-star">*</span>
+                    </label>
+                    <input type="url" id="ehr-launch-url" placeholder="https://your-private-launcher.example.com/launch">
+                    <span class="field-hint">您的私人 Launcher 所提供的啟動端點</span>
+                </div>
+                <div class="field-group">
+                    <label class="field-label">
+                        <i class="fas fa-arrow-turn-right"></i> Redirect URI <span class="required-star">*</span>
+                    </label>
+                    <input type="url" id="ehr-redirect-uri" placeholder="https://your-app.example.com/index.html">
+                </div>
+                <div class="field-group">
+                    <label class="field-label"><i class="fas fa-key"></i> Scopes</label>
+                    <div class="scope-tags" id="ehr-scope-tags"></div>
+                    <textarea id="ehr-scopes" style="margin-top:8px; font-family: 'Courier New', monospace; font-size:11.5px;" placeholder="launch/patient openid fhirUser patient/Patient.read ..."></textarea>
+                    <span class="field-hint">點擊上方標籤快速選取，或直接編輯</span>
+                </div>
+                <div class="info-box">
+                    <i class="fas fa-circle-info"></i>
+                    <p>系統將透過您的私人 Launcher 執行標準 EHR Launch 流程，並於授權完成後導向 Redirect URI。</p>
+                </div>
+            </div>
+
+            <!-- ── Standalone Launch Panel ── -->
+            <div class="mode-panel" id="panel-standalone">
+                <div class="field-group">
+                    <label class="field-label">
+                        <i class="fas fa-arrow-turn-right"></i> Redirect URI <span class="required-star">*</span>
+                    </label>
+                    <input type="url" id="sa-redirect-uri" placeholder="https://your-app.example.com/index.html">
+                    <span class="field-hint">請確認已於 Launcher 後台完成 Redirect URI 白名單設定</span>
+                </div>
+                <div class="field-group">
+                    <label class="field-label">
+                        <i class="fas fa-server"></i> ISS (FHIR Server URL) <span class="required-star">*</span>
+                    </label>
+                    <input type="url" id="sa-iss" placeholder="https://your-private-launcher.example.com/fhir">
+                    <span class="field-hint">設定為您的私人 Launcher FHIR Base URL</span>
+                </div>
+                <div class="field-group">
+                    <label class="field-label"><i class="fas fa-key"></i> Scopes</label>
+                    <div class="scope-tags" id="sa-scope-tags"></div>
+                    <textarea id="sa-scopes" style="margin-top:8px; font-family: 'Courier New', monospace; font-size:11.5px;" placeholder="openid fhirUser patient/Patient.read ..."></textarea>
+                    <span class="field-hint">Standalone 模式不需要 launch/patient scope</span>
+                </div>
+                <div class="info-box">
+                    <i class="fas fa-circle-info"></i>
+                    <p>於瀏覽器直接打開 Redirect URI，並帶入 <code style="font-size:11px; background:rgba(44,142,248,0.1); padding:1px 5px; border-radius:3px;">?iss=...</code> 參數，即可啟動 Standalone 授權流程。</p>
+                </div>
+            </div>
+
+            <!-- ── Backend Service Panel ── -->
+            <div class="mode-panel" id="panel-backend">
+                <div class="field-group">
+                    <label class="field-label"><i class="fas fa-key"></i> Scopes <span class="required-star">*</span></label>
+                    <div class="scope-tags" id="be-scope-tags"></div>
+                    <textarea id="be-scopes" style="margin-top:8px; font-family: 'Courier New', monospace; font-size:11.5px;" placeholder="system/Patient.read system/Observation.read ..."></textarea>
                 </div>
 
-                <!-- 主要啟動按鈕 -->
-                <button id="launch-btn" class="btn btn-primary btn-lg w-100 py-3 mb-3" onclick="startLaunch()">
-                    <i class="fas fa-key me-2"></i>
-                    啟動 EHR 授權
+                <!-- JWKS input toggle -->
+                <div class="field-group">
+                    <label class="field-label"><i class="fas fa-file-code"></i> JWKS 提供方式 <span class="required-star">*</span></label>
+                    <div style="display:flex; gap:8px; margin-bottom:8px;">
+                        <button class="jwks-toggle active" id="toggle-json" onclick="toggleJwks('json')" style="flex:1; padding:8px; border-radius:6px; border:1.5px solid var(--blue-mid); background:var(--blue-light); color:var(--blue-mid); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">
+                            <i class="fas fa-code me-1"></i> 貼上 JWKS JSON
+                        </button>
+                        <button class="jwks-toggle" id="toggle-url" onclick="toggleJwks('url')" style="flex:1; padding:8px; border-radius:6px; border:1.5px solid var(--gray-200); background:var(--gray-50); color:var(--gray-500); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">
+                            <i class="fas fa-link me-1"></i> 提供 JWKS URL
+                        </button>
+                    </div>
+                    <div id="jwks-json-wrap">
+                        <textarea id="be-jwks-json" style="font-family: 'Courier New', monospace; font-size:11.5px;" placeholder='{"keys":[{"kty":"RSA","use":"sig",...}]}'></textarea>
+                    </div>
+                    <div id="jwks-url-wrap" style="display:none;">
+                        <input type="url" id="be-jwks-url" placeholder="https://your-server.example.com/.well-known/jwks.json">
+                    </div>
+                </div>
+
+                <div class="warn-box">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <p>提交後，系統將驗證您的 JWKS 並產出專屬 FHIR Server URL，請妥善保存以供後端整合使用。</p>
+                </div>
+
+                <!-- Generated URL result -->
+                <div class="jwks-result" id="jwks-result">
+                    <p><i class="fas fa-check-circle" style="margin-right:5px;"></i>專屬 FHIR Server URL 已產生</p>
+                    <div class="url-out">
+                        <span id="generated-url">https://fhir.example.com/backend/...</span>
+                        <button onclick="copyUrl()" title="複製"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Alert -->
+        <div class="status-alert" id="status-alert">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span id="status-text">正在處理...</span>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="card-footer">
+            <div class="footer-meta">
+                <span class="client-id-label">Client ID</span>
+                <span>cc344727-6f90-496c-94fd-c7829aa9a51d</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-secondary" onclick="resetForm()"><i class="fas fa-rotate-left"></i> 重設</button>
+                <button class="btn-launch" id="launch-btn" onclick="handleLaunch()">
+                    <i class="fas fa-play"></i> 啟動授權
                 </button>
-
-                <div class="text-center">
-                    <small class="text-muted">
-                        此應用程式將透過 SMART on FHIR 標準<br>
-                        安全取得您的用藥處方與健康資料
-                    </small>
-                </div>
-
-                <!-- 測試資訊 -->
-                <div class="mt-4 pt-3 border-top">
-                    <small class="text-secondary">
-                        Client ID: <span class="font-monospace">cc344727-6f90-496c-94fd-c7829aa9a51d</span><br>
-                        <span class="text-warning">※ 測試階段使用 Confidential Client</span>
-                    </small>
-                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // 您的 Client 資訊
-        const CLIENT_ID = "cc344727-6f90-496c-94fd-c7829aa9a51d";
-        
-        // 建議使用的 Scope（可依實際需求調整）
-        const SCOPES = [
-            "launch/patient",      // EHR Launch 必須
-            "openid",
-            "fhirUser",
-            "patient/Patient.read",
-            "patient/MedicationRequest.read",
-            "patient/MedicationStatement.read",
-            "patient/MedicationAdministration.read",
-            "patient/Observation.read",
-            "online_access"        // 取得 refresh_token
-        ].join(" ");
+    <!-- Page footer -->
+    <div class="page-footer">
+        <p>此應用程式採用 <a href="https://www.hl7.org/fhir/smart-app-launch/" target="_blank">SMART on FHIR</a> 標準進行安全授權<br>
+        Client 類型：Confidential Client ｜ PKCE：if_available</p>
+    </div>
+</div>
 
-        // 開始 OAuth 授權流程 (EHR Launch)
-        async function startLaunch() {
-            const btn = document.getElementById('launch-btn');
-            const status = document.getElementById('status');
-            
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>正在啟動授權...`;
-            status.classList.remove('d-none');
-            status.textContent = "正在導向 SMART Launcher 進行授權...";
+<script>
+    const CLIENT_ID = "cc344727-6f90-496c-94fd-c7829aa9a51d";
 
+    const SCOPE_OPTIONS = {
+        ehr: ["launch/patient","openid","fhirUser","patient/Patient.read","patient/MedicationRequest.read","patient/MedicationStatement.read","patient/Observation.read","online_access"],
+        standalone: ["openid","fhirUser","patient/Patient.read","patient/MedicationRequest.read","patient/MedicationStatement.read","patient/Observation.read","online_access"],
+        backend: ["system/Patient.read","system/MedicationRequest.read","system/Observation.read","system/Condition.read"]
+    };
+
+    const DEFAULT_SCOPES = {
+        ehr: "launch/patient openid fhirUser patient/Patient.read patient/MedicationRequest.read patient/Observation.read online_access",
+        standalone: "openid fhirUser patient/Patient.read patient/MedicationRequest.read patient/Observation.read online_access",
+        backend: "system/Patient.read system/Observation.read"
+    };
+
+    let currentMode = 'ehr';
+    let selectedScopes = { ehr: new Set(), standalone: new Set(), backend: new Set() };
+
+    // ── Scope tag initialization ──
+    function initScopeTags() {
+        ['ehr','standalone','backend'].forEach(mode => {
+            const container = document.getElementById(`${mode === 'standalone' ? 'sa' : mode === 'backend' ? 'be' : 'ehr'}-scope-tags`);
+            const textarea = document.getElementById(`${mode === 'standalone' ? 'sa' : mode === 'backend' ? 'be' : 'ehr'}-scopes`);
+            container.innerHTML = '';
+            SCOPE_OPTIONS[mode].forEach(scope => {
+                const tag = document.createElement('div');
+                tag.className = 'scope-tag';
+                tag.textContent = scope;
+                tag.onclick = () => {
+                    tag.classList.toggle('selected');
+                    if (tag.classList.contains('selected')) selectedScopes[mode].add(scope);
+                    else selectedScopes[mode].delete(scope);
+                    updateScopeTextarea(mode);
+                };
+                container.appendChild(tag);
+            });
+            // Pre-select defaults
+            DEFAULT_SCOPES[mode].split(' ').forEach(s => {
+                const tag = [...container.querySelectorAll('.scope-tag')].find(t => t.textContent === s);
+                if (tag) { tag.classList.add('selected'); selectedScopes[mode].add(s); }
+            });
+            textarea.value = DEFAULT_SCOPES[mode];
+        });
+    }
+
+    function updateScopeTextarea(mode) {
+        const idMap = { ehr: 'ehr-scopes', standalone: 'sa-scopes', backend: 'be-scopes' };
+        document.getElementById(idMap[mode]).value = [...selectedScopes[mode]].join(' ');
+    }
+
+    // ── Mode selection ──
+    function selectMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.mode-panel').forEach(p => { p.classList.remove('visible'); });
+
+        const modeMap = { ehr: 'mode-ehr', standalone: 'mode-standalone', backend: 'mode-backend' };
+        document.querySelector(`.${modeMap[mode]}`).classList.add('active');
+        document.getElementById(`panel-${mode}`).classList.add('visible');
+
+        const btnLabels = { ehr: '啟動 EHR 授權', standalone: '啟動 Standalone 授權', backend: '提交 JWKS 取得 URL' };
+        const btnIcons = { ehr: 'fa-play', standalone: 'fa-arrow-up-right-from-square', backend: 'fa-cloud-arrow-up' };
+        document.getElementById('launch-btn').innerHTML = `<i class="fas ${btnIcons[mode]}"></i> ${btnLabels[mode]}`;
+
+        hideStatus();
+        document.getElementById('jwks-result').classList.remove('show');
+    }
+
+    // ── JWKS toggle ──
+    function toggleJwks(type) {
+        const showJson = type === 'json';
+        document.getElementById('jwks-json-wrap').style.display = showJson ? '' : 'none';
+        document.getElementById('jwks-url-wrap').style.display = showJson ? 'none' : '';
+        document.getElementById('toggle-json').style.cssText = showJson
+            ? 'flex:1;padding:8px;border-radius:6px;border:1.5px solid var(--blue-mid);background:var(--blue-light);color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;'
+            : 'flex:1;padding:8px;border-radius:6px;border:1.5px solid var(--gray-200);background:var(--gray-50);color:var(--gray-500);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;';
+        document.getElementById('toggle-url').style.cssText = !showJson
+            ? 'flex:1;padding:8px;border-radius:6px;border:1.5px solid var(--blue-mid);background:var(--blue-light);color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;'
+            : 'flex:1;padding:8px;border-radius:6px;border:1.5px solid var(--gray-200);background:var(--gray-50);color:var(--gray-500);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;';
+    }
+
+    // ── Status helpers ──
+    function showStatus(msg, type = 'info', icon = 'fa-spinner fa-spin') {
+        const el = document.getElementById('status-alert');
+        el.className = `status-alert show ${type}`;
+        el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+    }
+    function hideStatus() {
+        document.getElementById('status-alert').classList.remove('show');
+    }
+
+    // ── Main launch handler ──
+    async function handleLaunch() {
+        const btn = document.getElementById('launch-btn');
+        btn.disabled = true;
+
+        if (currentMode === 'ehr') {
+            const launchUrl = document.getElementById('ehr-launch-url').value.trim();
+            const redirectUri = document.getElementById('ehr-redirect-uri').value.trim();
+            const scopes = document.getElementById('ehr-scopes').value.trim();
+            if (!launchUrl || !redirectUri) {
+                showStatus('請填寫 Launch URL 與 Redirect URI', 'error', 'fa-circle-exclamation');
+                btn.disabled = false; return;
+            }
+            showStatus('正在導向私人 Launcher 進行 EHR 授權...', 'info', 'fa-spinner fa-spin');
             try {
-                // 使用 fhirclient 啟動授權
                 await FHIR.oauth2.authorize({
                     clientId: CLIENT_ID,
-                    scope: SCOPES,
-                    redirectUri: window.location.origin + "/index.html",   // 重要：必須與 index.html 路徑一致
-                    iss: null,                    // EHR Launch 模式下會由 launcher 帶入 iss
-                    launch: null,                 // 由 launcher 提供 launch 參數
-                    // 由於是 Confidential Client，PKCE 可選，但建議保留提升安全性
+                    scope: scopes,
+                    redirectUri: redirectUri,
+                    iss: launchUrl,
                     pkceMode: "if_available"
                 });
-            } catch (error) {
-                console.error("授權啟動失敗:", error);
-                alert("授權流程啟動失敗，請確認網路連線或重新整理頁面後再試。\n\n錯誤：" + error.message);
-                
-                // 恢復按鈕狀態
+            } catch (e) {
+                showStatus('授權啟動失敗：' + e.message, 'error', 'fa-circle-exclamation');
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fas fa-key me-2"></i>啟動 EHR 授權`;
-                status.classList.add('d-none');
             }
+
+        } else if (currentMode === 'standalone') {
+            const redirectUri = document.getElementById('sa-redirect-uri').value.trim();
+            const iss = document.getElementById('sa-iss').value.trim();
+            const scopes = document.getElementById('sa-scopes').value.trim();
+            if (!redirectUri || !iss) {
+                showStatus('請填寫 Redirect URI 與 ISS', 'error', 'fa-circle-exclamation');
+                btn.disabled = false; return;
+            }
+            showStatus('正在啟動 Standalone 授權流程...', 'info', 'fa-spinner fa-spin');
+            try {
+                await FHIR.oauth2.authorize({
+                    clientId: CLIENT_ID,
+                    scope: scopes,
+                    redirectUri: redirectUri,
+                    iss: iss,
+                    pkceMode: "if_available"
+                });
+            } catch (e) {
+                showStatus('授權啟動失敗：' + e.message, 'error', 'fa-circle-exclamation');
+                btn.disabled = false;
+            }
+
+        } else if (currentMode === 'backend') {
+            const scopes = document.getElementById('be-scopes').value.trim();
+            const jwksJson = document.getElementById('be-jwks-json').value.trim();
+            const jwksUrl = document.getElementById('be-jwks-url').value.trim();
+            if (!scopes || (!jwksJson && !jwksUrl)) {
+                showStatus('請填寫 Scopes 及 JWKS 資訊', 'error', 'fa-circle-exclamation');
+                btn.disabled = false; return;
+            }
+            showStatus('正在驗證 JWKS 並產生 FHIR Server URL...', 'info', 'fa-spinner fa-spin');
+            // Simulate backend processing
+            await new Promise(r => setTimeout(r, 1800));
+            const mockUrl = `https://fhir-backend.example.com/r4/${CLIENT_ID.substring(0,8)}`;
+            document.getElementById('generated-url').textContent = mockUrl;
+            document.getElementById('jwks-result').classList.add('show');
+            showStatus('FHIR Server URL 已產生，請複製保存', 'success', 'fa-check-circle');
+            btn.disabled = false;
         }
+    }
 
-        // 頁面載入時檢查是否已經帶有授權參數（防止重複授權）
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            if (urlParams.has('code') || urlParams.has('error')) {
-                // 如果已經有 code，表示是從授權後 redirect 回來，應該交給 index.html 處理
-                window.location.href = "index.html" + window.location.search;
-            }
-        };
-
-        // 防止使用者直接關閉視窗的提示（可選）
-        window.addEventListener('beforeunload', function(e) {
-            if (document.getElementById('launch-btn').disabled) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
+    // ── Copy URL ──
+    function copyUrl() {
+        const url = document.getElementById('generated-url').textContent;
+        navigator.clipboard.writeText(url).then(() => {
+            showStatus('已複製到剪貼簿', 'success', 'fa-check');
+            setTimeout(hideStatus, 2000);
         });
-    </script>
+    }
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    // ── Reset ──
+    function resetForm() {
+        document.querySelectorAll('input[type="text"], input[type="url"], textarea').forEach(el => el.value = '');
+        document.querySelectorAll('.scope-tag').forEach(t => t.classList.remove('selected'));
+        Object.keys(selectedScopes).forEach(k => selectedScopes[k] = new Set());
+        document.getElementById('jwks-result').classList.remove('show');
+        hideStatus();
+        initScopeTags();
+    }
+
+    // ── Init ──
+    window.onload = function() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('code') || params.has('error')) {
+            window.location.href = "index.html" + window.location.search;
+            return;
+        }
+        initScopeTags();
+    };
+</script>
 </body>
 </html>
