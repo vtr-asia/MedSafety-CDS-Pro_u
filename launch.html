@@ -3,157 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧用藥安全監測小幫手 - 啟動頁</title>
+    <title>智慧用藥安全監測小幫手 - 安全啟動中</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
+        body { font-family: 'Noto Sans TC', sans-serif; }
         .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #ffffff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="max-w-2xl w-full mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <!-- 標頭 -->
-        <div class="gradient-bg text-white px-8 py-6 flex items-center gap-4">
-            <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-4xl">🩺</div>
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight">智慧用藥安全監測小幫手</h1>
-                <p class="text-white/90 text-lg">守護您的每一顆藥丸 ❤️</p>
-            </div>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden text-center">
+        <div class="gradient-bg py-10 flex flex-col items-center">
+            <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner">🩺</div>
+            <h1 class="text-white text-2xl font-bold">SMART 臨床啟動</h1>
         </div>
 
         <div class="p-8">
-            <div id="oauth-status" class="mb-8">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-shield-halved text-emerald-500"></i>
-                    第二階段 OAuth 流程驗證測試
-                </h2>
-                <p class="text-gray-600 mb-6">正在模擬從電子病歷系統 (EHR) 啟動並完成完整 OAuth2 授權碼流程</p>
-
-                <!-- 流程步驟 -->
-                <div class="space-y-4">
-                    <!-- 步驟 1 -->
-                    <div id="step-1" class="flex items-center gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                        <div class="w-8 h-8 bg-emerald-500 text-white rounded-xl flex items-center justify-center font-bold">1</div>
-                        <div class="flex-1">
-                            <p class="font-medium text-emerald-700">接收 EHR Launch 參數</p>
-                            <p id="launch-info" class="text-sm text-emerald-600">iss: https://nhi-fake.ehr.gov.tw/fhir<br>launch: LAUNCH-20260327-1412</p>
-                        </div>
-                        <i id="icon-1" class="fa-solid fa-check-circle text-3xl text-emerald-500"></i>
-                    </div>
-
-                    <!-- 步驟 2 -->
-                    <div id="step-2" class="flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                        <div class="w-8 h-8 bg-amber-500 text-white rounded-xl flex items-center justify-center font-bold">2</div>
-                        <div class="flex-1">
-                            <p class="font-medium text-amber-700">第一階段：請求授權碼 (Authorization Code)</p>
-                            <div class="h-2 bg-amber-200 rounded-full mt-2 overflow-hidden">
-                                <div id="progress-1" class="h-2 bg-amber-500 w-0 transition-all duration-700"></div>
-                            </div>
-                        </div>
-                        <i id="icon-2" class="fa-solid fa-circle text-3xl text-amber-300"></i>
-                    </div>
-
-                    <!-- 步驟 3 -->
-                    <div id="step-3" class="flex items-center gap-4 bg-sky-50 border border-sky-200 rounded-2xl p-4">
-                        <div class="w-8 h-8 bg-sky-500 text-white rounded-xl flex items-center justify-center font-bold">3</div>
-                        <div class="flex-1">
-                            <p class="font-medium text-sky-700">第二階段：使用授權碼交換 Access Token</p>
-                            <div class="h-2 bg-sky-200 rounded-full mt-2 overflow-hidden">
-                                <div id="progress-2" class="h-2 bg-sky-500 w-0 transition-all duration-700"></div>
-                            </div>
-                            <p id="token-result" class="text-xs text-sky-600 mt-1 hidden">Token 已成功取得（有效期限 1 小時）</p>
-                        </div>
-                        <i id="icon-3" class="fa-solid fa-circle text-3xl text-sky-300"></i>
-                    </div>
+            <div id="status-container" class="space-y-6">
+                <div class="flex justify-center">
+                    <div class="spinner border-t-emerald-500 border-emerald-100"></div>
                 </div>
-            </div>
-
-            <!-- 成功訊息區塊（預設隱藏） -->
-            <div id="success-panel" class="hidden bg-emerald-100 border border-emerald-300 rounded-3xl p-6 text-center">
-                <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-inner mb-4">
-                    <i class="fa-solid fa-lock-open text-5xl text-emerald-500"></i>
+                <div>
+                    <h2 id="status-title" class="text-xl font-bold text-gray-800">正在建立安全連線</h2>
+                    <p id="status-desc" class="text-gray-500 mt-2">正在與 FHIR 伺服器進行 OAuth2 握手驗證...</p>
                 </div>
-                <h3 class="text-2xl font-bold text-emerald-700 mb-1">✅ 第二階段 OAuth 驗證測試通過！</h3>
-                <p class="text-emerald-600">已安全取得病人資料存取權限</p>
-                <p class="text-sm text-gray-500 mt-2">您現在可以進入主應用程式，系統將自動撈取該病人的基本資料、診斷結果與用藥紀錄</p>
                 
-                <button onclick="completeLaunch()" 
-                        class="mt-8 w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl text-xl font-medium flex items-center justify-center gap-3 shadow-lg">
-                    <i class="fa-solid fa-arrow-right"></i>
-                    進入智慧用藥安全監測小幫手
-                </button>
-            </div>
-        </div>
+                <div id="error-panel" class="hidden bg-red-50 text-red-700 p-4 rounded-2xl text-sm text-left">
+                    <p class="font-bold flex items-center gap-2 mb-1">
+                        <span class="text-lg">⚠️</span> 啟動失敗
+                    </p>
+                    <p id="error-message">無法偵測到有效的 FHIR Launch 脈絡。</p>
+                </div>
 
-        <div class="px-8 py-6 border-t flex justify-between text-sm text-gray-500">
-            <div>模擬測試環境 • Taipei, Taiwan</div>
-            <div class="flex items-center gap-1">
-                <span class="px-3 py-1 bg-white rounded-full border text-emerald-600 text-xs font-medium">FHIR • OAuth 2.0</span>
+                <div class="pt-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-400 font-mono" id="server-url">檢測伺服器中...</p>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Tailwind script
-        function initializeTailwind() {
-            tailwind.config = {
-                content: [],
-                theme: { extend: {} }
-            }
-        }
-
-        // 模擬 OAuth 完整流程（重點：通過第二階段）
-        function startOAuthFlow() {
-            // 步驟 1：立即完成（接收 launch 參數）
-            document.getElementById('icon-1').classList.add('animate-pulse')
-            setTimeout(() => {
-                document.getElementById('step-1').classList.add('!border-emerald-500', 'bg-emerald-100')
-                document.getElementById('icon-1').classList.remove('animate-pulse')
-                document.getElementById('icon-1').classList.add('fa-check-circle')
-                
-                // 開始步驟 2
-                document.getElementById('progress-1').style.width = '100%'
-                setTimeout(() => {
-                    document.getElementById('step-2').classList.add('!border-emerald-500', 'bg-emerald-100')
-                    document.getElementById('icon-2').classList.remove('text-amber-300')
-                    document.getElementById('icon-2').classList.add('fa-check-circle', 'text-emerald-500')
-                    
-                    // 開始步驟 3（第二階段重點）
-                    document.getElementById('progress-2').style.width = '100%'
-                    setTimeout(() => {
-                        document.getElementById('step-3').classList.add('!border-emerald-500', 'bg-emerald-100')
-                        document.getElementById('icon-3').classList.remove('text-sky-300')
-                        document.getElementById('icon-3').classList.add('fa-check-circle', 'text-emerald-500')
-                        document.getElementById('token-result').classList.remove('hidden')
-                        
-                        // 顯示成功面板
-                        document.getElementById('oauth-status').classList.add('hidden')
-                        document.getElementById('success-panel').classList.remove('hidden')
-                    }, 1800)
-                }, 1600)
-            }, 800)
-        }
-
-        function completeLaunch() {
-            // 模擬儲存 token 到 localStorage（讓 index.html 可驗證）
-            localStorage.setItem('oauth_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-token-passed-stage-2')
-            localStorage.setItem('patient_launch_id', 'LAUNCH-20260327-1412')
-            // 跳轉到主畫面
-            window.location.href = 'index.html'
-        }
-
-        // 啟動
         window.onload = function() {
-            initializeTailwind()
-            // 自動開始流程（模擬真實 launch URL 參數）
-            const urlParams = new URLSearchParams(window.location.search)
-            const iss = urlParams.get('iss') || 'https://nhi-fake.ehr.gov.tw/fhir'
-            const launch = urlParams.get('launch') || 'LAUNCH-20260327-1412'
-            document.getElementById('launch-info').innerHTML = `iss: ${iss}<br>launch: ${launch}`
+            // 從 URL 解析參數 (iss 為 FHIR 伺服器位址)
+            const urlParams = new URLSearchParams(window.location.search);
+            const iss = urlParams.get("iss");
             
-            startOAuthFlow()
+            if (iss) {
+                document.getElementById('server-url').innerText = `連線至: ${iss}`;
+                
+                // 發起 SMART 授權請求
+                FHIR.oauth2.authorize({
+                    // 在此填寫您在該 FHIR Server 註冊的 Client ID
+                    "clientId": "my_web_app", 
+                    
+                    // 請求權限：病患資料、生理紀錄、診斷、處方
+                    "scope": "patient/*.read launch openid fhirUser",
+                    
+                    // 授權完畢後導向的主程式頁面
+                    "redirectUri": "index.html",
+                    
+                    // 在相同視窗完成啟動
+                    "completeInTarget": true
+                });
+            } else {
+                // 如果直接開啟 launch.html (非透過 EHR 啟動)
+                handleLaunchError("未偵測到 iss 參數。本 App 需由 SMART on FHIR 相容之 EHR 系統啟動。");
+            }
+        };
+
+        function handleLaunchError(msg) {
+            document.querySelector('.spinner').classList.add('hidden');
+            document.getElementById('status-title').innerText = "啟動中斷";
+            document.getElementById('status-title').classList.add('text-red-600');
+            document.getElementById('status-desc').innerText = "請確認啟動環境或連線參數。";
+            
+            const errorPanel = document.getElementById('error-panel');
+            errorPanel.classList.remove('hidden');
+            document.getElementById('error-message').innerText = msg;
+
+            // 提供一個手動進入 Demo 的選項
+            const demoBtn = document.createElement('button');
+            demoBtn.className = "mt-4 w-full py-3 bg-gray-800 text-white rounded-2xl font-medium hover:bg-gray-700 transition-colors";
+            demoBtn.innerText = "手動進入 Demo 模式";
+            demoBtn.onclick = () => window.location.href = 'index.html';
+            errorPanel.appendChild(demoBtn);
         }
     </script>
 </body>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智慧用藥安全監測小幫手</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -14,8 +15,16 @@
     </style>
 </head>
 <body class="bg-gray-50">
+
+    <div id="global-loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[10000] flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="relative">
+            <div class="w-20 h-20 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-2xl">推</div>
+        </div>
+        <p class="mt-4 text-emerald-700 font-medium animate-pulse">安全連線中，正在同步 FHIR 醫療數據...</p>
+    </div>
+
     <div class="max-w-7xl mx-auto">
-        <!-- 頂部導航 -->
         <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
             <div class="px-8 py-5 flex items-center justify-between">
                 <div class="flex items-center gap-4">
@@ -27,18 +36,17 @@
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                             </span>
-                            已通過第二階段 OAuth 驗證 • 資料安全連線中
+                            <span id="system-status">正在連線至 FHIR 伺服器...</span>
                         </p>
                     </div>
                 </div>
                 
-                <!-- 病人頭像與資訊 -->
                 <div onclick="showPatientModal()" class="flex items-center gap-3 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-6 py-3 rounded-3xl">
                     <div class="text-right">
-                        <div id="patient-name" class="font-semibold text-lg">陳大明</div>
-                        <div id="patient-info" class="text-sm text-gray-500">72 歲 • 男性 • 台北市</div>
+                        <div id="patient-name-top" class="font-semibold text-lg">讀取中...</div>
+                        <div id="patient-info-short" class="text-sm text-gray-500">請稍候</div>
                     </div>
-                    <div class="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-2xl flex items-center justify-center text-4xl">👴</div>
+                    <div class="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-2xl flex items-center justify-center text-4xl">👤</div>
                 </div>
                 
                 <div class="flex items-center gap-6 text-gray-600">
@@ -51,330 +59,9 @@
         </nav>
 
         <div class="flex">
-            <!-- 側邊欄 -->
             <div class="w-72 bg-white border-r min-h-[calc(100vh-73px)] p-6 flex flex-col">
                 <div class="space-y-2">
-                    <a onclick="switchTab(0)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl text-emerald-700 font-medium bg-emerald-50" id="tab-0">
+                    <a onclick="switchTab(0)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl text-emerald-700 font-medium bg-emerald-50 cursor-pointer" id="tab-0">
                         <i class="fa-solid fa-house w-5"></i> 首頁總覽
                     </a>
-                    <a onclick="switchTab(1)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl hover:bg-gray-50" id="tab-1">
-                        <i class="fa-solid fa-file-medical w-5"></i> 診斷結果
-                    </a>
-                    <a onclick="switchTab(2)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl hover:bg-gray-50" id="tab-2">
-                        <i class="fa-solid fa-pills w-5"></i> 用藥紀錄
-                    </a>
-                    <a onclick="switchTab(3)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl hover:bg-gray-50" id="tab-3">
-                        <i class="fa-solid fa-prescription-bottle-medical w-5"></i> 開立新藥
-                    </a>
-                    <a onclick="switchTab(4)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl hover:bg-gray-50" id="tab-4">
-                        <i class="fa-solid fa-shield-halved w-5"></i> 用藥安全叮嚀
-                    </a>
-                </div>
-                
-                <div class="mt-auto pt-8">
-                    <div class="bg-emerald-50 rounded-3xl p-5 text-center">
-                        <i class="fa-solid fa-robot text-4xl text-emerald-500 mb-3"></i>
-                        <p class="font-medium text-emerald-700">小幫手 AI 提醒</p>
-                        <p id="ai-tip" class="text-sm text-gray-600 mt-2">今天血壓稍高，建議午餐後再服降壓藥喔～</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 主內容區 -->
-            <div class="flex-1 p-8">
-                <!-- Tab 0: 總覽 -->
-                <div id="content-0" class="tab-content">
-                    <div class="mb-8">
-                        <h2 class="text-4xl font-bold text-gray-800">您好，陳大明先生 👋</h2>
-                        <p class="text-emerald-600 text-xl">今天是 2026 年 3 月 27 日，讓我們一起守護您的用藥安全！</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-3 gap-6">
-                        <!-- 基本資料卡 -->
-                        <div class="card-hover bg-white rounded-3xl p-6 shadow-sm border">
-                            <div class="flex justify-between items-start">
-                                <h3 class="text-lg font-medium">基本資料</h3>
-                                <i class="fa-solid fa-user text-3xl text-emerald-300"></i>
-                            </div>
-                            <div class="mt-6 space-y-4 text-sm">
-                                <div class="flex justify-between"><span class="text-gray-500">身高</span><span class="font-medium">168 cm</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">體重</span><span class="font-medium">72 kg</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">過敏史</span><span class="font-medium text-rose-500">青黴素</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">腎功能</span><span class="font-medium text-emerald-600">良好 (eGFR 68)</span></div>
-                            </div>
-                        </div>
-                        
-                        <!-- 最新診斷 -->
-                        <div class="card-hover bg-white rounded-3xl p-6 shadow-sm border">
-                            <h3 class="text-lg font-medium mb-4">最新診斷結果</h3>
-                            <div id="diagnosis-list" class="space-y-3"></div>
-                        </div>
-                        
-                        <!-- 今日用藥 -->
-                        <div class="card-hover bg-white rounded-3xl p-6 shadow-sm border">
-                            <h3 class="text-lg font-medium mb-4">今日應服藥物</h3>
-                            <div class="flex flex-col gap-4" id="today-meds"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 1: 診斷結果 -->
-                <div id="content-1" class="tab-content hidden">
-                    <h2 class="text-3xl font-bold mb-6">診斷結果</h2>
-                    <div id="full-diagnosis" class="space-y-6"></div>
-                </div>
-
-                <!-- Tab 2: 用藥紀錄 -->
-                <div id="content-2" class="tab-content hidden">
-                    <h2 class="text-3xl font-bold mb-6 flex items-center justify-between">
-                        用藥紀錄
-                        <span onclick="exportRecord()" class="text-sm bg-white px-4 py-2 rounded-2xl border text-emerald-600 cursor-pointer hover:shadow">📤 匯出 PDF</span>
-                    </h2>
-                    <table class="w-full bg-white rounded-3xl overflow-hidden">
-                        <thead class="bg-emerald-50">
-                            <tr><th class="text-left px-8 py-4 text-gray-500">日期</th><th class="text-left px-8 py-4 text-gray-500">藥品</th><th class="text-left px-8 py-4 text-gray-500">劑量</th><th class="text-left px-8 py-4 text-gray-500">醫師</th></tr>
-                        </thead>
-                        <tbody id="med-record-body" class="divide-y"></tbody>
-                    </table>
-                </div>
-
-                <!-- Tab 3: 開立新藥 -->
-                <div id="content-3" class="tab-content hidden">
-                    <h2 class="text-3xl font-bold mb-6">開立新藥</h2>
-                    <div class="bg-white rounded-3xl p-8 max-w-2xl">
-                        <form onsubmit="prescribeNewDrug(event)" class="space-y-6">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">藥品名稱</label>
-                                <input id="drug-name" type="text" class="w-full rounded-2xl border border-gray-200 px-5 py-4 focus:outline-none focus:border-emerald-400" placeholder="例如：阿托伐他汀" required>
-                            </div>
-                            <div class="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">劑量</label>
-                                    <input id="dosage" type="text" class="w-full rounded-2xl border border-gray-200 px-5 py-4" placeholder="10mg" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 mb-1">服用頻率</label>
-                                    <select id="frequency" class="w-full rounded-2xl border border-gray-200 px-5 py-4">
-                                        <option>每日一次</option>
-                                        <option>每日兩次</option>
-                                        <option>每週三次</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" 
-                                    class="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl text-xl font-medium flex items-center justify-center gap-3">
-                                <i class="fa-solid fa-prescription"></i>
-                                確認開立新藥並檢查交互作用
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Tab 4: 用藥安全叮嚀 -->
-                <div id="content-4" class="tab-content hidden">
-                    <h2 class="text-3xl font-bold mb-6">🛡️ 用藥安全叮嚀</h2>
-                    <div id="safety-tips" class="grid grid-cols-2 gap-6"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 病人詳細 Modal -->
-    <div onclick="if(event.target.id==='patient-modal')hidePatientModal()" id="patient-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
-        <div onclick="event.stopImmediatePropagation()" class="bg-white rounded-3xl max-w-lg w-full mx-4 p-8">
-            <h3 class="text-2xl font-bold mb-6">病人基本資料</h3>
-            <div class="space-y-6 text-sm" id="modal-patient-info"></div>
-            <button onclick="hidePatientModal()" class="mt-8 w-full py-4 border rounded-3xl">關閉</button>
-        </div>
-    </div>
-
-    <script>
-        // Tailwind 初始化
-        function initTailwind() {
-            return tailwind.config = { content: [], theme: { extend: {} } }
-        }
-
-        // 模擬病人資料（從 SERVER 撈取）
-        const mockPatient = {
-            name: "陳大明",
-            age: 72,
-            gender: "男性",
-            id: "A123456789",
-            height: "168 cm",
-            weight: "72 kg",
-            allergy: "青黴素",
-            diagnosis: [
-                { name: "高血壓", date: "2026-02-15", status: "持續追蹤" },
-                { name: "第二型糖尿病", date: "2025-11-03", status: "穩定控制" },
-                { name: "輕度高血脂", date: "2026-01-20", status: "新診斷" }
-            ],
-            medsHistory: [
-                { date: "2026-03-20", drug: "Losartan 50mg", dose: "每日一次", doctor: "李心內科醫師" },
-                { date: "2026-03-10", drug: "Metformin 500mg", dose: "每日兩次", doctor: "王內分泌醫師" },
-                { date: "2026-02-25", drug: "Atorvastatin 10mg", dose: "每日一次", doctor: "李心內科醫師" }
-            ],
-            safetyTips: [
-                "避免與葡萄柚汁同服（會增加他汀類藥物濃度）",
-                "飯後服藥可減少胃部不適",
-                "本週血壓偏高，請每日測量並記錄",
-                "如出現頭暈、噁心，請立即停藥並回診"
-            ]
-        }
-
-        // 渲染所有資料
-        function renderAllData() {
-            // 基本資料
-            document.getElementById('patient-name').textContent = mockPatient.name
-            document.getElementById('patient-info').innerHTML = `${mockPatient.age} 歲 • ${mockPatient.gender} • 台北市`
-
-            // 診斷卡
-            const diagHTML = mockPatient.diagnosis.map(d => `
-                <div class="flex justify-between items-center bg-emerald-50 rounded-2xl px-4 py-3">
-                    <div><span class="font-medium">${d.name}</span></div>
-                    <div class="text-xs px-3 py-1 bg-white rounded-2xl">${d.date}　${d.status}</div>
-                </div>`).join('')
-            document.getElementById('diagnosis-list').innerHTML = diagHTML
-
-            // 今日用藥（取前兩筆）
-            const todayHTML = mockPatient.medsHistory.slice(0, 2).map(m => `
-                <div class="flex items-center justify-between bg-emerald-50 px-5 py-4 rounded-2xl">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-pill text-emerald-600"></i>
-                        <div>
-                            <div class="font-medium">${m.drug}</div>
-                            <div class="text-xs text-gray-500">${m.dose}</div>
-                        </div>
-                    </div>
-                    <span class="text-emerald-600 font-medium">✅ 已服</span>
-                </div>`).join('')
-            document.getElementById('today-meds').innerHTML = todayHTML
-
-            // 完整診斷頁
-            const fullDiag = mockPatient.diagnosis.map(d => `
-                <div class="bg-white rounded-3xl p-6 flex gap-6">
-                    <div class="flex-1">
-                        <div class="text-xl font-semibold">${d.name}</div>
-                        <div class="text-emerald-600">${d.date}</div>
-                    </div>
-                    <div class="text-right">
-                        <span class="inline-block px-4 py-2 bg-emerald-100 text-emerald-700 rounded-3xl text-sm">${d.status}</span>
-                    </div>
-                </div>`).join('')
-            document.getElementById('full-diagnosis').innerHTML = fullDiag
-
-            // 用藥紀錄表格
-            const tbody = document.getElementById('med-record-body')
-            tbody.innerHTML = mockPatient.medsHistory.map(m => `
-                <tr class="hover:bg-emerald-50">
-                    <td class="px-8 py-5">${m.date}</td>
-                    <td class="px-8 py-5 font-medium">${m.drug}</td>
-                    <td class="px-8 py-5">${m.dose}</td>
-                    <td class="px-8 py-5 text-gray-500">${m.doctor}</td>
-                </tr>`).join('')
-
-            // 安全叮嚀
-            const tipsHTML = mockPatient.safetyTips.map((tip, i) => `
-                <div class="bg-white border border-emerald-100 rounded-3xl p-6 flex gap-4 card-hover">
-                    <div class="text-4xl">0${i+1}</div>
-                    <p class="text-gray-700">${tip}</p>
-                </div>`).join('')
-            document.getElementById('safety-tips').innerHTML = tipsHTML
-
-            // AI 小提醒隨機輪替
-            setInterval(() => {
-                const tips = [
-                    "記得飯後 30 分鐘再服降血糖藥喔～",
-                    "今天氣溫較高，多喝水並注意電解質平衡",
-                    "如有新症狀，請隨時按右下角「聯絡醫師」"
-                ]
-                document.getElementById('ai-tip').textContent = tips[Math.floor(Math.random()*tips.length)]
-            }, 8000)
-        }
-
-        // 切換 Tab
-        function switchTab(n) {
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('bg-emerald-50', 'text-emerald-700'))
-            document.getElementById(`tab-${n}`).classList.add('bg-emerald-50', 'text-emerald-700')
-            
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'))
-            document.getElementById(`content-${n}`).classList.remove('hidden')
-        }
-
-        // 開立新藥
-        function prescribeNewDrug(e) {
-            e.preventDefault()
-            const name = document.getElementById('drug-name').value
-            const dosage = document.getElementById('dosage').value
-            const freq = document.getElementById('frequency').value
-            
-            // 模擬交互作用檢查（第二階段 OAuth 已通過，所以資料可安全存取）
-            const interactionMsg = name.includes('他汀') 
-                ? '⚠️ 與現有 Losartan 有輕微交互作用，請監測血壓' 
-                : '✅ 無重大交互作用，可安全開立'
-            
-            alert(`🎉 新藥「${name} ${dosage}」已成功開立！\n\n${interactionMsg}\n\n小幫手提醒：請於 3 天後回診追蹤效果。`)
-            
-            // 新增到紀錄
-            mockPatient.medsHistory.unshift({
-                date: "2026-03-27",
-                drug: `${name} ${dosage}`,
-                dose: freq,
-                doctor: "您（測試醫師）"
-            })
-            renderAllData()
-            switchTab(2) // 跳到用藥紀錄
-        }
-
-        function showPatientModal() {
-            const modal = document.getElementById('patient-modal')
-            const content = document.getElementById('modal-patient-info')
-            content.innerHTML = `
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gray-50 rounded-2xl p-4"><span class="text-gray-500 block">身分證字號</span><span class="font-semibold">${mockPatient.id}</span></div>
-                    <div class="bg-gray-50 rounded-2xl p-4"><span class="text-gray-500 block">身高體重</span><span class="font-semibold">${mockPatient.height} / ${mockPatient.weight}</span></div>
-                    <div class="bg-gray-50 rounded-2xl p-4"><span class="text-gray-500 block">過敏史</span><span class="font-semibold text-rose-600">${mockPatient.allergy}</span></div>
-                    <div class="bg-gray-50 rounded-2xl p-4"><span class="text-gray-500 block">最後更新</span><span class="font-semibold">2026-03-27 14:10</span></div>
-                </div>
-                <p class="mt-6 text-center text-emerald-600">資料已透過第二階段 OAuth 安全取得 ✅</p>
-            `
-            modal.classList.remove('hidden')
-            modal.classList.add('flex')
-        }
-
-        function hidePatientModal() {
-            const modal = document.getElementById('patient-modal')
-            modal.classList.add('hidden')
-            modal.classList.remove('flex')
-        }
-
-        function exportRecord() {
-            alert('📄 用藥紀錄已匯出為 PDF（模擬成功）\n檔案已下載至您的裝置')
-        }
-
-        function logout() {
-            if (confirm('確定要登出嗎？')) {
-                localStorage.removeItem('oauth_token')
-                window.location.href = 'launch.html'
-            }
-        }
-
-        // 啟動主程式
-        window.onload = function() {
-            initTailwind()
-            
-            // 檢查是否已通過 OAuth
-            const token = localStorage.getItem('oauth_token')
-            if (!token) {
-                alert('⚠️ 請先從 launch.html 完成第二階段 OAuth 驗證')
-                window.location.href = 'launch.html'
-                return
-            }
-            
-            renderAllData()
-            switchTab(0)
-            
-            console.log('%c✅ 智慧用藥安全監測小幫手已載入\n第二階段 OAuth 驗證通過 • 資料安全撈取完成', 'color:#10b981; font-weight:700')
-        }
-    </script>
-</body>
-</html>
+                    <a onclick="switchTab(1)" class="tab-item flex items-center gap-3 px-5
