@@ -38,12 +38,14 @@
 
         <main class="p-8">
             <div id="main-content" class="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500">
+                <!-- 最新收縮壓 -->
                 <div class="bg-white p-6 rounded-3xl border shadow-sm">
                     <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">最新收縮壓</h3>
                     <div class="text-5xl font-black text-emerald-600" id="v-sbp">--</div>
                     <p class="text-gray-400 text-xs mt-2" id="v-sbp-time">最後量測：未偵測</p>
                 </div>
 
+                <!-- 臨床診斷 -->
                 <div class="bg-white p-6 rounded-3xl border shadow-sm">
                     <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">臨床診斷 (Active)</h3>
                     <div id="cond-list" class="space-y-2 max-h-40 overflow-y-auto">
@@ -51,6 +53,7 @@
                     </div>
                 </div>
 
+                <!-- CDS-Decision Support -->
                 <div class="bg-gray-900 p-6 rounded-3xl text-white shadow-xl">
                     <div class="flex items-center gap-2 text-emerald-400 mb-3">
                         <i class="fa-solid fa-robot"></i>
@@ -63,76 +66,29 @@
     </div>
 
     <script>
-        // 第二階段正式憑證
-        const CONFIG = {
-            clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-            clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e"
-        };
+        // 測試伺服器（衛福部 FHIR 生態相容的公開測試伺服器）
+        const TEST_SERVER_URL = "https://hapi.fhir.tw/fhir";
 
         async function init() {
             try {
-                // 自動處理 URL 中的 code 與 state，並自動發起 token 交換
                 const client = await FHIR.oauth2.ready();
                 console.log("✅ Token 交換成功！連線伺服器:", client.state.serverUrl);
-                
                 document.getElementById('loader-text').innerText = "連線成功，讀取 FHIR 資源中...";
-                await loadPatientData(client);
-
+                await loadPatientData(client, true);   // true = SMART 正式模式
             } catch (err) {
                 console.error("❌ 授權交換失敗:", err);
-                document.getElementById('loader-text').innerHTML = `
-                    <div class="text-red-500 p-4 text-center">
-                        <p class="font-bold">認證過期或無效</p>
-                        <p class="text-sm opacity-70">${err.message}</p>
-                        <button onclick="location.href='launch.html'" class="mt-4 px-4 py-2 bg-gray-800 text-white rounded-lg">返回重新登入</button>
-                    </div>
-                `;
+                document.getElementById('loader-text').innerText = "SMART 授權失敗 → 自動切換 DEMO 模式 (臺灣測試伺服器)";
+                await loadDemoData();
             }
         }
 
-        async function loadPatientData(client) {
+        // ====================== 正式 SMART 模式 ======================
+        async function loadPatientData(client, isSmart = true) {
             const pId = client.patient.id;
-            
-            // 同時抓取所有資源以提升效能
-            const [p, obs, conds, meds] = await Promise.all([
-                client.patient.read(),
+            const p = await client.patient.read();
+
+            // 同時抓取所有資源
+            const [obs, conds, meds] = await Promise.all([
                 client.request(`Observation?subject=Patient/${pId}&code=85354-9&_sort=-date&_count=1`),
                 client.request(`Condition?subject=Patient/${pId}&clinical-status=active`),
                 client.request(`MedicationRequest?subject=Patient/${pId}&status=active`)
-            ]);
-
-            // 1. 更新病人橫幅
-            document.getElementById('patient-tab').classList.remove('hidden');
-            document.getElementById('p-name').innerText = p.name ? p.name[0].text : "匿名病患";
-            document.getElementById('p-info').innerText = `${p.id.substring(0,8)}... | ${p.birthDate}`;
-
-            // 2. 更新收縮壓 (SBP)
-            const latestObs = obs.entry ? obs.entry[0].resource : null;
-            if (latestObs) {
-                const sbpComp = latestObs.component.find(c => c.code.coding.some(cc => cc.code === '8480-6'));
-                const sbpVal = sbpComp.valueQuantity.value;
-                document.getElementById('v-sbp').innerText = sbpVal;
-                document.getElementById('v-sbp-time').innerText = `最後量測：${new Date(latestObs.effectiveDateTime).toLocaleDateString()}`;
-                
-                // 3. AI 簡易邏輯
-                document.getElementById('ai-suggestion').innerHTML = sbpVal > 140 
-                    ? `<span class="text-red-400 font-bold">🚨 警示：</span>偵測到收縮壓異常 (${sbpVal} mmHg)，建議檢查處方箋中是否有降壓藥劑調整需求。`
-                    : "✅ 數值正常。病患目前生理指標穩定。";
-            }
-
-            // 4. 渲染診斷列表
-            document.getElementById('cond-list').innerHTML = (conds.entry || []).map(e => `
-                <div class="text-sm bg-gray-50 p-2 rounded border border-gray-100 font-medium text-gray-700">
-                    • ${e.resource.code.text}
-                </div>
-            `).join('') || "<p class='text-gray-400'>無活動中診斷</p>";
-
-            // 顯示主內容區
-            document.getElementById('main-content').classList.remove('opacity-0');
-            document.getElementById('loader').classList.add('hidden');
-        }
-
-        window.onload = init;
-    </script>
-</body>
-</html>
