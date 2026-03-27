@@ -10,6 +10,33 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
+        
+        .patient-header {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+            padding: 24px;
+            border-radius: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+        }
+        .patient-name {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .patient-meta {
+            font-size: 18px;
+            opacity: 0.95;
+            margin-top: 8px;
+        }
+        
+        .med-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -20,24 +47,30 @@
     </div>
 
     <div class="max-w-7xl mx-auto min-h-screen">
+        <!-- 頂部導航 -->
         <nav class="bg-white border-b px-8 py-5 flex items-center justify-between shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="bg-emerald-600 text-white p-2 rounded-lg text-2xl">🩺</div>
                 <h1 class="text-xl font-bold text-gray-800">智慧用藥安全監測 <span class="text-emerald-500">Pro_u</span></h1>
             </div>
-            <div id="patient-tab" class="hidden flex items-center gap-4 bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100">
-                <div class="text-right">
-                    <p id="p-name" class="font-bold text-gray-800">載入中...</p>
-                    <p id="p-info" class="text-xs text-emerald-600 font-mono">--</p>
-                </div>
-                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-emerald-200 text-emerald-600">
-                    <i class="fa-solid fa-user-check"></i>
-                </div>
-            </div>
         </nav>
 
+        <!-- 病人基本資料（大字） -->
+        <div id="patient-header" class="hidden patient-header mx-8 mt-6">
+            <div class="flex items-center gap-6">
+                <div class="w-20 h-20 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-5xl shadow-inner">
+                    👤
+                </div>
+                <div>
+                    <div id="p-name" class="patient-name">載入中...</div>
+                    <div id="p-meta" class="patient-meta">正在讀取病人資料...</div>
+                </div>
+            </div>
+        </div>
+
         <main class="p-8">
-            <div id="main-content" class="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500">
+            <div id="main-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500">
+
                 <!-- 最新收縮壓 -->
                 <div class="bg-white p-6 rounded-3xl border shadow-sm">
                     <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">最新收縮壓</h3>
@@ -48,41 +81,48 @@
                 <!-- 臨床診斷 -->
                 <div class="bg-white p-6 rounded-3xl border shadow-sm">
                     <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">臨床診斷 (Active)</h3>
-                    <div id="cond-list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <div id="cond-list" class="space-y-2 max-h-48 overflow-y-auto">
                         <p class="text-gray-300 text-sm">讀取中...</p>
                     </div>
                 </div>
 
-                <!-- CDS 決策支援 + 用藥清單 -->
-                <div class="bg-gray-900 p-6 rounded-3xl text-white shadow-xl">
-                    <div class="flex items-center gap-2 text-emerald-400 mb-3">
-                        <i class="fa-solid fa-robot"></i>
-                        <span class="font-bold">CDS-Decision Support</span>
+                <!-- 用藥紀錄（新增重點卡片） -->
+                <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                    <h3 class="text-gray-400 text-xs font-bold uppercase mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-pills text-emerald-500"></i>
+                        目前用藥紀錄
+                    </h3>
+                    <div id="med-list" class="space-y-3 text-sm">
+                        <p class="text-gray-400">讀取用藥資料中...</p>
                     </div>
-                    <p id="ai-suggestion" class="text-sm opacity-90 leading-relaxed">正在分析病患用藥與臨床指標...</p>
+                </div>
+
+                <!-- CDS 決策支援 -->
+                <div class="lg:col-span-3 bg-gray-900 p-6 rounded-3xl text-white shadow-xl">
+                    <div class="flex items-center gap-2 text-emerald-400 mb-4">
+                        <i class="fa-solid fa-robot"></i>
+                        <span class="font-bold">CDS-Decision Support（用藥安全建議）</span>
+                    </div>
+                    <p id="ai-suggestion" class="text-base leading-relaxed">正在分析病患用藥與臨床指標...</p>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        // LOINC 代碼（收縮壓）
         const LOINC_SBP = "8480-6";
 
         async function init() {
             document.getElementById('loader-text').innerText = "正在進行 SMART on FHIR 認證...";
 
             try {
-                // === 學習成功案例的核心寫法 ===
-                const smart = await FHIR.oauth2.ready();   // 不傳參數，最穩定
-
+                const smart = await FHIR.oauth2.ready();
                 console.log("✅ SMART 連線成功！Patient ID:", smart.patient.id);
 
-                document.getElementById('loader-text').innerText = "連線成功，正在讀取 FHIR 資源...";
+                document.getElementById('loader-text').innerText = "連線成功，正在讀取病人資料...";
 
                 const pid = smart.patient.id;
 
-                // 同時抓取多個資源（與成功案例一致）
                 const [patient, obs, conds, meds] = await Promise.all([
                     smart.request(`Patient/${pid}`),
                     smart.request(`Observation?patient=${pid}&code=85354-9&_sort=-date&_count=1`),
@@ -94,29 +134,21 @@
 
             } catch (err) {
                 console.error("❌ SMART 認證失敗:", err);
-                
                 document.getElementById('loader-text').innerHTML = `
                     <div class="text-red-500 p-6 text-center">
                         <p class="font-bold text-lg">SMART 授權失敗</p>
                         <p class="text-sm mt-2 opacity-80">${err.message || err}</p>
-                        <p class="text-xs mt-4">正在切換至 DEMO 模式...</p>
+                        <p class="text-xs mt-4">切換至 DEMO 模式...</p>
                     </div>`;
-
-                // 失敗後自動進入 DEMO 模式（使用臺灣公開測試伺服器）
                 setTimeout(loadDemoMode, 1800);
             }
         }
 
-        // ====================== DEMO 模式（hapi.fhir.tw） ======================
         async function loadDemoMode() {
             try {
-                document.getElementById('loader-text').innerText = "進入 DEMO 模式（臺灣 FHIR 測試伺服器）...";
+                document.getElementById('loader-text').innerText = "進入 DEMO 模式...";
+                const client = new FHIR.Client({ serverUrl: "https://hapi.fhir.tw/fhir" });
 
-                const client = new FHIR.Client({ 
-                    serverUrl: "https://hapi.fhir.tw/fhir" 
-                });
-
-                // 取得一個公開測試病患
                 const patBundle = await client.request("Patient?_count=1");
                 const patient = patBundle.entry?.[0]?.resource;
                 if (!patient) throw new Error("無法取得測試病患");
@@ -132,24 +164,41 @@
                 renderData(patient, obs, conds, meds, false);
 
             } catch (e) {
-                console.error("DEMO 模式失敗:", e);
+                console.error(e);
                 document.getElementById('loader-text').innerHTML = `
                     <div class="text-red-500 p-6 text-center">
-                        <p class="font-bold">連線失敗</p>
+                        <p class="font-bold">DEMO 模式連線失敗</p>
                         <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-gray-800 text-white rounded-xl">重試</button>
                     </div>`;
             }
         }
 
-        // ====================== 共用渲染函式 ======================
         function renderData(patient, obs, conds, meds, isSmart) {
-            // 1. 病人資訊
-            document.getElementById('patient-tab').classList.remove('hidden');
-            const pName = patient.name ? (patient.name[0].text || "匿名病患") : "匿名病患";
-            document.getElementById('p-name').innerText = pName;
-            document.getElementById('p-info').innerText = `${patient.id.substring(0,8)}... | ${patient.birthDate || "未知"}`;
+            // ==================== 病人基本資料 ====================
+            const patientHeader = document.getElementById('patient-header');
+            patientHeader.classList.remove('hidden');
 
-            // 2. 最新收縮壓
+            const name = patient.name ? 
+                (patient.name[0].text || 
+                 `${patient.name[0].family || ''} ${patient.name[0].given ? patient.name[0].given.join(' ') : ''}`.trim()) 
+                : "匿名病患";
+
+            document.getElementById('p-name').innerText = name;
+
+            let age = "--";
+            if (patient.birthDate) {
+                const birth = new Date(patient.birthDate);
+                age = Math.floor((new Date() - birth) / 31557600000);
+            }
+
+            const genderMap = { male: "男性", female: "女性", other: "其他", unknown: "未知" };
+            const gender = genderMap[patient.gender] || "未知";
+
+            document.getElementById('p-meta').innerHTML = `
+                ${gender}　｜　${age} 歲　｜　病例號：${patient.id}
+            `;
+
+            // ==================== 最新收縮壓 ====================
             let sbpValue = "--";
             let sbpTime = "最後量測：未偵測";
             let aiText = "✅ 目前生理指標穩定。";
@@ -159,12 +208,11 @@
                 const sbpComp = res.component?.find(c => 
                     c.code.coding?.some(cc => cc.code === LOINC_SBP)
                 );
-                if (sbpComp && sbpComp.valueQuantity) {
+                if (sbpComp?.valueQuantity) {
                     sbpValue = sbpComp.valueQuantity.value;
                     sbpTime = `最後量測：${new Date(res.effectiveDateTime).toLocaleDateString('zh-TW')}`;
-                    
                     if (sbpValue > 140) {
-                        aiText = `<span class="text-red-400 font-bold">🚨 血壓警示：</span>收縮壓 ${sbpValue} mmHg 偏高，建議確認降血壓藥物使用情況。`;
+                        aiText = `<span class="text-red-400 font-bold">🚨 血壓警示：</span>收縮壓 ${sbpValue} mmHg 偏高，建議確認用藥。`;
                     }
                 }
             }
@@ -172,7 +220,7 @@
             document.getElementById('v-sbp').innerText = sbpValue;
             document.getElementById('v-sbp-time').innerText = sbpTime;
 
-            // 3. 臨床診斷
+            // ==================== 臨床診斷 ====================
             const condHtml = (conds.entry || []).map(e => `
                 <div class="text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
                     • ${e.resource.code?.text || "未命名診斷"}
@@ -180,16 +228,46 @@
             `).join('') || '<p class="text-gray-400 text-sm">無活動中診斷</p>';
             document.getElementById('cond-list').innerHTML = condHtml;
 
-            // 4. 用藥清單摘要（重點加強）
-            let medSummary = "";
+            // ==================== 用藥紀錄（新增重點） ====================
+            const medListEl = document.getElementById('med-list');
             if (meds.entry && meds.entry.length > 0) {
-                const medNames = meds.entry.slice(0, 4).map(e => 
-                    e.resource.medicationCodeableConcept?.text || "未知藥物"
-                ).join("、");
-                medSummary = `<br><span class="text-emerald-400">💊 目前活躍用藥 (${meds.entry.length} 項)：</span>${medNames}`;
+                let html = '';
+                meds.entry.forEach(item => {
+                    const med = item.resource;
+                    const medName = med.medicationCodeableConcept?.text || 
+                                   med.medicationCodeableConcept?.coding?.[0]?.display || 
+                                   "未知藥物";
+                    
+                    const dosage = med.dosageInstruction?.[0]?.text || 
+                                  (med.dosageInstruction?.[0]?.doseAndRate?.[0]?.doseQuantity?.value ? 
+                                   `${med.dosageInstruction[0].doseAndRate[0].doseQuantity.value} ${med.dosageInstruction[0].doseAndRate[0].doseQuantity.unit || ''}` : 
+                                   "劑量未指定");
+                    
+                    const frequency = med.dosageInstruction?.[0]?.timing?.code?.text || "頻率未指定";
+
+                    html += `
+                        <div class="flex justify-between items-center bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                            <div>
+                                <div class="font-medium text-gray-800">${medName}</div>
+                                <div class="text-xs text-gray-500 mt-1">${dosage}　｜　${frequency}</div>
+                            </div>
+                            <div class="text-emerald-600">
+                                <i class="fa-solid fa-check-circle"></i>
+                            </div>
+                        </div>`;
+                });
+                medListEl.innerHTML = html;
             } else {
-                medSummary = `<br><span class="text-gray-400">目前無活躍處方藥</span>`;
+                medListEl.innerHTML = `
+                    <div class="bg-gray-50 p-8 rounded-2xl text-center">
+                        <p class="text-gray-400">目前無活躍用藥紀錄</p>
+                    </div>`;
             }
+
+            // ==================== CDS 建議 ====================
+            let medSummary = meds.entry && meds.entry.length > 0 
+                ? `<br><span class="text-emerald-400">💊 活躍用藥 ${meds.entry.length} 項</span>` 
+                : `<br><span class="text-gray-400">目前無活躍用藥</span>`;
 
             document.getElementById('ai-suggestion').innerHTML = aiText + medSummary;
 
@@ -197,17 +275,14 @@
             document.getElementById('main-content').classList.remove('opacity-0');
             document.getElementById('loader').classList.add('hidden');
 
-            // DEMO 模式標記
             if (!isSmart) {
-                const nav = document.querySelector('nav');
                 const badge = document.createElement('div');
-                badge.className = "ml-auto bg-amber-100 text-amber-700 text-xs font-bold px-4 py-1.5 rounded-2xl flex items-center gap-1";
+                badge.className = "fixed top-6 right-8 bg-amber-100 text-amber-700 text-xs font-bold px-4 py-1.5 rounded-2xl shadow";
                 badge.innerHTML = `🔬 DEMO 模式 (hapi.fhir.tw)`;
-                nav.appendChild(badge);
+                document.body.appendChild(badge);
             }
         }
 
-        // 啟動
         window.onload = init;
     </script>
 </body>
