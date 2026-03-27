@@ -3,65 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧用藥安全監測小幫手</title>
+    <title>智慧用藥安全監測小幫手 - 專業版</title>
     <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
         body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
-        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 25px 25px 0 -10px rgb(16 185 129); }
+        .loading-shimmer { background: linear-gradient(90deg, #f0fdf4 25%, #dcfce7 50%, #f0fdf4 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 min-h-screen">
 
-    <div id="global-loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[10000] flex flex-col items-center justify-center transition-opacity duration-300">
+    <div id="global-loader" class="fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="relative">
-            <div class="w-20 h-20 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin"></div>
-            <div class="absolute inset-0 flex items-center justify-center text-2xl">推</div>
+            <div class="w-24 h-24 border-8 border-emerald-100 border-t-emerald-500 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-3xl">💊</div>
         </div>
-        <p class="mt-4 text-emerald-700 font-medium animate-pulse">安全連線中，正在同步 FHIR 醫療數據...</p>
+        <div class="mt-6 text-center">
+            <p class="text-xl font-bold text-emerald-800">正在建立加密連線</p>
+            <p class="text-gray-500 text-sm mt-2">已偵測到正式 Client ID，正在同步 FHIR 資源...</p>
+        </div>
     </div>
 
     <div class="max-w-7xl mx-auto">
-        <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
-            <div class="px-8 py-5 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-emerald-500 text-white rounded-3xl flex items-center justify-center text-4xl">🩺</div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-800">智慧用藥安全監測小幫手</h1>
-                        <p class="text-emerald-600 text-sm flex items-center gap-1">
-                            <span class="relative flex h-3 w-3">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                            </span>
-                            <span id="system-status">正在連線至 FHIR 伺服器...</span>
-                        </p>
+        <nav class="bg-white border-b sticky top-0 z-50 shadow-sm px-8 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-emerald-100">🩺</div>
+                <div>
+                    <h1 class="text-2xl font-black text-gray-800 tracking-tight">智慧用藥安全監測 <span class="text-emerald-500">Pro</span></h1>
+                    <div class="flex items-center gap-2 text-xs font-medium text-emerald-600">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        正式環境連線中 (Stage 2)
                     </div>
                 </div>
-                
-                <div onclick="showPatientModal()" class="flex items-center gap-3 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-6 py-3 rounded-3xl">
-                    <div class="text-right">
-                        <div id="patient-name-top" class="font-semibold text-lg">讀取中...</div>
-                        <div id="patient-info-short" class="text-sm text-gray-500">請稍候</div>
-                    </div>
-                    <div class="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-2xl flex items-center justify-center text-4xl">👤</div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="patient-banner" class="flex flex-col text-right">
+                    <span id="p-name" class="text-lg font-bold text-gray-800">載入中...</span>
+                    <span id="p-meta" class="text-xs text-gray-500">正在檢查權限</span>
                 </div>
-                
-                <div class="flex items-center gap-6 text-gray-600">
-                    <a href="#" onclick="logout()" class="flex items-center gap-2 hover:text-emerald-600">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        <span class="text-sm">登出</span>
-                    </a>
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-xl text-gray-400 border border-gray-200">
+                    <i class="fa-solid fa-user-shield"></i>
                 </div>
             </div>
         </nav>
 
         <div class="flex">
-            <div class="w-72 bg-white border-r min-h-[calc(100vh-73px)] p-6 flex flex-col">
-                <div class="space-y-2">
-                    <a onclick="switchTab(0)" class="tab-item flex items-center gap-3 px-5 py-4 rounded-3xl text-emerald-700 font-medium bg-emerald-50 cursor-pointer" id="tab-0">
-                        <i class="fa-solid fa-house w-5"></i> 首頁總覽
-                    </a>
-                    <a onclick="switchTab(1)" class="tab-item flex items-center gap-3 px-5
+            <aside class="w-72 bg-white border-r min-h-[calc(100vh-89px)] p-6 space-y-2">
+                <button onclick="switchTab(0)" id="btn-0" class="tab-btn w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-emerald-50 text-emerald-700 font-bold transition-all">
+                    <i class="fa-solid fa-house-chimney-medical w-6"></i> 臨床概覽
+                </button>
+                <button onclick="switchTab(1)" id="btn-1" class="tab-btn w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500 hover:bg-gray-50 transition-all font-medium">
+                    <i class="fa-solid fa-Stethoscope w-6"></i> 診斷清單
+                </button>
+                <button onclick="switchTab(2)" id="btn-2" class="tab-btn w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500 hover:bg-gray-50 transition-all font-medium">
+                    <i class="fa-solid fa-file-prescription w-6"></i> 用藥紀錄
+                </button>
+                
+                <div class="mt-10 p-5 bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl text-white shadow-xl">
+                    <div class="flex items-center gap-2 mb-3 text-emerald-400 font-bold text-sm">
+                        <i class="fa-solid fa-robot"></i> AI 安全監測
+                    </div>
+                    <p id="ai-text" class="text-xs leading-relaxed opacity-80">正在掃描 MedicationRequest 與 Allergy 交叉風險...</p>
+                </div>
+            </aside>
+
+            <main class="flex-1 p-10">
+                <div id="content-0" class="tab-content space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                            <span class="text-gray-400 text-xs font-bold uppercase tracking-widest">最新收縮壓</span>
+                            <div class="flex items-baseline gap-2 mt-2">
+                                <span id="v-sbp" class="text-5xl font-black text-emerald-600">--</span>
+                                <span class="text-gray-400 font-medium">mmHg</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                            <span class="text-gray-400 text-xs font-bold uppercase tracking-widest">診斷總數</span>
+                            <div class="flex items-baseline gap-2 mt-2">
+                                <span id="v-cond-count" class="text-5xl font-black text-blue-600">--</span>
+                                <span class="text-gray-400 font-medium">項 active</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                            <span class="text-gray-400 text-xs font-bold uppercase tracking-widest">當前用藥</span>
+                            <div class="flex items-baseline gap-2 mt-2">
+                                <span id="v-med-count" class="text-5xl font-black text-orange-500">--</span>
+                                <span class="text-gray-400 font-medium">種處方</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-1" class="tab-content hidden space-y-4">
+                    <h2 class="text-2xl font-black text-gray-800 mb-6">臨床診斷 (Condition)</h2>
+                    <div id="diag-container" class="grid grid-cols-1 gap-4"></div>
+                </div>
+
+                <div id="content-2" class="tab-content hidden">
+                    <h2 class="text-2xl font-black text-gray-800 mb-6">處方紀錄 (MedicationRequest)</h2>
+                    <div class="bg-white rounded-3xl border shadow-sm overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase">日期</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase">藥品</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase">狀態</th>
+                                </tr>
+                            </thead>
+                            <tbody id="med-table-body" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 設定正式環境之憑證 (僅供測試，正式上線建議放後端)
+        const FHIR_CONFIG = {
+            clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
+            clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e"
+        };
+
+        let smartClient = null;
+
+        async function startApp() {
+            try {
+                // 執行 OAuth2 握手
+                smartClient = await FHIR.oauth2.ready();
+                console.log("✅ 授權成功，連線至:", smartClient.state.serverUrl);
+                
+                await fetchFHIRData();
+            } catch (err) {
+                console.warn("⚠️ 授權失敗或非從 Launcher 啟動，加載 Demo", err);
+                renderDemo();
+            } finally {
+                const loader = document.getElementById('global-loader');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
+        }
+
+        async function fetchFHIRData() {
+            const pId = smartClient.patient.id;
+
+            // 抓取核心資源
+            const [patient, obs, meds, conds] = await Promise.all([
+                smartClient.patient.read(),
+                smartClient.request(`Observation?subject=Patient/${pId}&code=85354-9&_sort=-date&_count=1`),
+                smartClient.request(`MedicationRequest?subject=Patient/${pId}`),
+                smartClient.request(`Condition?subject=Patient/${pId}&clinical-status=active`)
+            ]);
+
+            renderUI({
+                name: patient.name ? patient.name[0].text || "病患" : "未知",
+                gender: patient.gender === 'male' ? '男' : '女',
+                birth: patient.birthDate,
+                sbp: obs.entry ? obs.entry[0].resource.component.find(c => c.code.coding.some(cc => cc.code === '8480-6')).valueQuantity.value : "--",
+                meds: meds.entry || [],
+                conds: conds.entry || []
+            });
