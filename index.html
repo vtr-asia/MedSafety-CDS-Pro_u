@@ -1,94 +1,45 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧用藥安全監測 Pro | Stage 2 認證版</title>
-    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-    </style>
-</head>
-<body class="bg-gray-50">
+async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    const state = urlParams.get("state");
 
-    <div id="loader" class="fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center">
-        <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-emerald-800 font-bold text-lg" id="loader-text">正在交換安全憑證 (Token Exchange)...</p>
-    </div>
+    document.getElementById('loader-text').innerText = code 
+        ? "正在交換 Token (OAuth2 Code Exchange)..." 
+        : "正在初始化 SMART on FHIR 連線...";
 
-    <div class="max-w-7xl mx-auto min-h-screen">
-        <nav class="bg-white border-b px-8 py-5 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-600 text-white p-2 rounded-lg text-2xl">🩺</div>
-                <h1 class="text-xl font-bold text-gray-800">智慧用藥安全監測 <span class="text-emerald-500">Pro_u</span></h1>
-            </div>
-            <div id="patient-tab" class="hidden flex items-center gap-4 bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100">
-                <div class="text-right">
-                    <p id="p-name" class="font-bold text-gray-800">載入中...</p>
-                    <p id="p-info" class="text-xs text-emerald-600 font-mono">--</p>
-                </div>
-                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-emerald-200 text-emerald-600">
-                    <i class="fa-solid fa-user-check"></i>
-                </div>
-            </div>
-        </nav>
+    try {
+        // 強制讓 fhir-client 處理目前的 URL（包含 code & state）
+        const client = await FHIR.oauth2.ready({
+            // 可選：明確指定 clientId（如果你的 launch.html 用 "my_web_app"，這裡建議保持一致）
+            clientId: "my_web_app"
+        });
 
-        <main class="p-8">
-            <div id="main-content" class="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500">
-                <!-- 最新收縮壓 -->
-                <div class="bg-white p-6 rounded-3xl border shadow-sm">
-                    <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">最新收縮壓</h3>
-                    <div class="text-5xl font-black text-emerald-600" id="v-sbp">--</div>
-                    <p class="text-gray-400 text-xs mt-2" id="v-sbp-time">最後量測：未偵測</p>
-                </div>
+        console.log("✅ Token 交換成功！伺服器:", client.state.serverUrl);
+        console.log("Patient ID:", client.patient?.id);
 
-                <!-- 臨床診斷 -->
-                <div class="bg-white p-6 rounded-3xl border shadow-sm">
-                    <h3 class="text-gray-400 text-xs font-bold uppercase mb-2">臨床診斷 (Active)</h3>
-                    <div id="cond-list" class="space-y-2 max-h-40 overflow-y-auto">
-                        <p class="text-gray-300 text-sm">讀取中...</p>
-                    </div>
-                </div>
+        document.getElementById('loader-text').innerText = "連線成功，讀取病患資料中...";
+        await loadPatientData(client, true);
 
-                <!-- CDS-Decision Support -->
-                <div class="bg-gray-900 p-6 rounded-3xl text-white shadow-xl">
-                    <div class="flex items-center gap-2 text-emerald-400 mb-3">
-                        <i class="fa-solid fa-robot"></i>
-                        <span class="font-bold">CDS-Decision Support</span>
-                    </div>
-                    <p id="ai-suggestion" class="text-sm opacity-90 leading-relaxed">正在分析病患當前用藥清單與臨床指標...</p>
-                </div>
-            </div>
-        </main>
-    </div>
+    } catch (err) {
+        console.error("❌ SMART Token Exchange 失敗:", err);
+        
+        // 顯示更清楚的錯誤資訊給開發者看
+        document.getElementById('loader-text').innerHTML = `
+            <div class="text-red-500 p-4 text-center max-w-md">
+                <p class="font-bold mb-2">SMART 授權交換失敗</p>
+                <p class="text-sm opacity-80 break-all">${err.message || err}</p>
+                <p class="text-xs mt-3 opacity-60">code 參數已收到，但 exchange 失敗</p>
+                <button onclick="window.location.href='launch.html'" 
+                        class="mt-4 px-5 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm">
+                    返回重新啟動
+                </button>
+            </div>`;
 
-    <script>
-        // 測試伺服器（衛福部 FHIR 生態相容的公開測試伺服器）
-        const TEST_SERVER_URL = "https://hapi.fhir.tw/fhir";
-
-        async function init() {
-            try {
-                const client = await FHIR.oauth2.ready();
-                console.log("✅ Token 交換成功！連線伺服器:", client.state.serverUrl);
-                document.getElementById('loader-text').innerText = "連線成功，讀取 FHIR 資源中...";
-                await loadPatientData(client, true);   // true = SMART 正式模式
-            } catch (err) {
-                console.error("❌ 授權交換失敗:", err);
-                document.getElementById('loader-text').innerText = "SMART 授權失敗 → 自動切換 DEMO 模式 (臺灣測試伺服器)";
-                await loadDemoData();
+        // 3 秒後自動切換到 DEMO 模式（方便你測試）
+        setTimeout(() => {
+            if (document.getElementById('loader').classList.contains('hidden') === false) {
+                loadDemoData();
             }
-        }
-
-        // ====================== 正式 SMART 模式 ======================
-        async function loadPatientData(client, isSmart = true) {
-            const pId = client.patient.id;
-            const p = await client.patient.read();
-
-            // 同時抓取所有資源
-            const [obs, conds, meds] = await Promise.all([
-                client.request(`Observation?subject=Patient/${pId}&code=85354-9&_sort=-date&_count=1`),
-                client.request(`Condition?subject=Patient/${pId}&clinical-status=active`),
-                client.request(`MedicationRequest?subject=Patient/${pId}&status=active`)
+        }, 3000);
+    }
+}
