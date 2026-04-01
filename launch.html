@@ -27,6 +27,7 @@
         <div class="gradient-bg py-10 flex flex-col items-center">
             <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner">🩺</div>
             <h1 class="text-white text-2xl font-bold">SMART 臨床啟動</h1>
+            <p class="text-white/90 text-sm mt-1">智慧用藥安全監測小幫手</p>
         </div>
 
         <div class="p-8">
@@ -55,50 +56,30 @@
 
     <script>
         window.onload = function() {
-            // 從 URL 解析參數 (iss 為 FHIR 伺服器位址)
+            const CLIENT_ID = "cc344727-6f90-496c-94fd-c7829aa9a51d";
+            const CLIENT_SECRET = "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e";  // 已加入
+
             const urlParams = new URLSearchParams(window.location.search);
             const iss = urlParams.get("iss");
-            
+            const launchParam = urlParams.get("launch");
+
+            const statusTitle = document.getElementById('status-title');
+            const statusDesc = document.getElementById('status-desc');
+            const serverUrlEl = document.getElementById('server-url');
+
             if (iss) {
-                document.getElementById('server-url').innerText = `連線至: ${iss}`;
-                
-                // 發起 SMART 授權請求
+                serverUrlEl.innerText = `連線至: ${iss}`;
+
+                console.log("🚀 SMART Launch 開始");
+                console.log("ISS:", iss);
+                console.log("Launch:", launchParam);
+                console.log("Client ID:", CLIENT_ID);
+
+                // 發起 SMART 授權請求（已加入 clientSecret）
                 FHIR.oauth2.authorize({
-                    // 在此填寫您在該 FHIR Server 註冊的 Client ID
-                    "clientId": "my_web_app", 
-                    
-                    // 請求權限：病患資料、生理紀錄、診斷、處方
-                    "scope": "patient/*.read launch openid fhirUser",
-                    
-                    // 授權完畢後導向的主程式頁面
-                    "redirectUri": "index.html",
-                    
-                    // 在相同視窗完成啟動
-                    "completeInTarget": true
-                });
-            } else {
-                // 如果直接開啟 launch.html (非透過 EHR 啟動)
-                handleLaunchError("未偵測到 iss 參數。本 App 需由 SMART on FHIR 相容之 EHR 系統啟動。");
-            }
-        };
-
-        function handleLaunchError(msg) {
-            document.querySelector('.spinner').classList.add('hidden');
-            document.getElementById('status-title').innerText = "啟動中斷";
-            document.getElementById('status-title').classList.add('text-red-600');
-            document.getElementById('status-desc').innerText = "請確認啟動環境或連線參數。";
-            
-            const errorPanel = document.getElementById('error-panel');
-            errorPanel.classList.remove('hidden');
-            document.getElementById('error-message').innerText = msg;
-
-            // 提供一個手動進入 Demo 的選項
-            const demoBtn = document.createElement('button');
-            demoBtn.className = "mt-4 w-full py-3 bg-gray-800 text-white rounded-2xl font-medium hover:bg-gray-700 transition-colors";
-            demoBtn.innerText = "手動進入 Demo 模式";
-            demoBtn.onclick = () => window.location.href = 'index.html';
-            errorPanel.appendChild(demoBtn);
-        }
-    </script>
-</body>
-</html>
+                    clientId: CLIENT_ID,
+                    clientSecret: CLIENT_SECRET,           // ← 已加入 client_secret
+                    scope: "launch patient/*.read user/Patient.read openid fhirUser profile online_access",
+                    redirectUri: "index.html",
+                    iss: iss,
+                    launch: launchParam || undefined,
