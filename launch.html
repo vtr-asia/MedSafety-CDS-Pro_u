@@ -1,85 +1,119 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧用藥安全監測小幫手 - 安全啟動中</title>
-    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #ffffff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智慧用藥安全監測小幫手 - 安全啟動中</title>
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
-
-    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden text-center">
-        <div class="gradient-bg py-10 flex flex-col items-center">
-            <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner">🩺</div>
-            <h1 class="text-white text-2xl font-bold">SMART 臨床啟動</h1>
-            <p class="text-white/90 text-sm mt-1">智慧用藥安全監測小幫手</p>
-        </div>
-
-        <div class="p-8">
-            <div id="status-container" class="space-y-6">
-                <div class="flex justify-center">
-                    <div class="spinner border-t-emerald-500 border-emerald-100"></div>
-                </div>
-                <div>
-                    <h2 id="status-title" class="text-xl font-bold text-gray-800">正在建立安全連線</h2>
-                    <p id="status-desc" class="text-gray-500 mt-2">正在與 FHIR 伺服器進行 OAuth2 握手驗證...</p>
-                </div>
-                
-                <div id="error-panel" class="hidden bg-red-50 text-red-700 p-4 rounded-2xl text-sm text-left">
-                    <p class="font-bold flex items-center gap-2 mb-1">
-                        <span class="text-lg">⚠️</span> 啟動失敗
-                    </p>
-                    <p id="error-message">無法偵測到有效的 FHIR Launch 脈絡。</p>
-                </div>
-
-                <div class="pt-4 border-t border-gray-100">
-                    <p class="text-xs text-gray-400 font-mono" id="server-url">檢測伺服器中...</p>
-                </div>
-            </div>
-        </div>
+  <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden text-center">
+    <div class="gradient-bg py-10 flex flex-col items-center">
+      <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner">🩺</div>
+      <h1 class="text-white text-2xl font-bold">SMART 臨床啟動</h1>
+      <p class="text-white/90 text-sm mt-1">智慧用藥安全監測小幫手</p>
     </div>
 
-    <script>
-        window.onload = function() {
-            const CLIENT_ID = "cc344727-6f90-496c-94fd-c7829aa9a51d";
-            const CLIENT_SECRET = "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e";  // 已加入
+    <div class="p-8">
+      <div id="status-container" class="space-y-6">
+        <div class="flex justify-center" id="spinner-wrap">
+          <div class="spinner border-t-emerald-500 border-emerald-100"></div>
+        </div>
+        <div>
+          <h2 id="status-title" class="text-xl font-bold text-gray-800">正在建立安全連線</h2>
+          <p id="status-desc" class="text-gray-500 mt-2">正在與 FHIR 伺服器進行 OAuth2 握手驗證...</p>
+        </div>
+        <div id="error-panel" class="hidden bg-red-50 text-red-700 p-4 rounded-2xl text-sm text-left">
+          <p class="font-bold flex items-center gap-2 mb-1">
+            <span class="text-lg">⚠️</span> 啟動失敗
+          </p>
+          <p id="error-message">無法偵測到有效的 FHIR Launch 脈絡。</p>
+        </div>
+        <div class="pt-4 border-t border-gray-100">
+          <p class="text-xs text-gray-400 font-mono" id="server-url">檢測伺服器中...</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const iss = urlParams.get("iss");
-            const launchParam = urlParams.get("launch");
+  <script>
+    // ─── 設定區 ────────────────────────────────────────────────
+    var CLIENT_ID     = "cc344727-6f90-496c-94fd-c7829aa9a51d";
+    var CLIENT_SECRET = "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e";
 
-            const statusTitle = document.getElementById('status-title');
-            const statusDesc = document.getElementById('status-desc');
-            const serverUrlEl = document.getElementById('server-url');
+    // 動態產生絕對路徑 redirectUri，適用 GitHub Pages 任意子目錄
+    var REDIRECT_URI = (function () {
+      var parts = window.location.href.split('/');
+      parts[parts.length - 1] = 'index.html';
+      return parts.join('/').split('?')[0];
+    })();
+    // ────────────────────────────────────────────────────────────
 
-            if (iss) {
-                serverUrlEl.innerText = `連線至: ${iss}`;
+    var statusTitle  = document.getElementById('status-title');
+    var statusDesc   = document.getElementById('status-desc');
+    var serverUrlEl  = document.getElementById('server-url');
+    var errorPanel   = document.getElementById('error-panel');
+    var errorMessage = document.getElementById('error-message');
+    var spinnerWrap  = document.getElementById('spinner-wrap');
 
-                console.log("🚀 SMART Launch 開始");
-                console.log("ISS:", iss);
-                console.log("Launch:", launchParam);
-                console.log("Client ID:", CLIENT_ID);
+    function showError(msg) {
+      spinnerWrap.classList.add('hidden');
+      statusTitle.innerText = '啟動失敗';
+      statusDesc.innerText  = '請確認啟動連結是否正確，或重新從 EHR 啟動。';
+      errorPanel.classList.remove('hidden');
+      errorMessage.innerText = msg;
+    }
 
-                // 發起 SMART 授權請求（已加入 clientSecret）
-                FHIR.oauth2.authorize({
-                    clientId: CLIENT_ID,
-                    clientSecret: CLIENT_SECRET,           // ← 已加入 client_secret
-                    scope: "launch patient/*.read user/Patient.read openid fhirUser profile online_access",
-                    redirectUri: "index.html",
-                    iss: iss,
-                    launch: launchParam || undefined,
+    window.onload = function () {
+      var urlParams   = new URLSearchParams(window.location.search);
+      var iss         = urlParams.get('iss');
+      var launchParam = urlParams.get('launch');
+
+      console.log('🚀 SMART Launch 開始');
+      console.log('ISS:', iss);
+      console.log('Launch:', launchParam);
+      console.log('Redirect URI:', REDIRECT_URI);
+      console.log('Client ID:', CLIENT_ID);
+
+      if (!iss) {
+        showError('URL 中缺少 iss 參數，無法取得 FHIR 伺服器位置。');
+        serverUrlEl.innerText = '未提供 ISS';
+        return;
+      }
+
+      serverUrlEl.innerText = '連線至: ' + iss;
+      statusDesc.innerText  = '正在向授權伺服器發送請求...';
+
+      FHIR.oauth2.authorize({
+        clientId:     CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        scope:        'launch patient/*.read user/Patient.read openid fhirUser profile online_access',
+        redirectUri:  REDIRECT_URI,
+        iss:          iss,
+        launch:       launchParam || undefined,
+      }).catch(function (err) {
+        console.error('❌ SMART authorize 失敗:', err);
+        showError(
+          (err && (err.message || err.toString())) ||
+          '授權過程發生未知錯誤，請重新從 EHR 啟動應用程式。'
+        );
+      });
+    };
+  </script>
+</body>
+</html>
