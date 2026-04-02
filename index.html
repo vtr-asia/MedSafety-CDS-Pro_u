@@ -3,965 +3,968 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>糖尿病共照網品質儀表板</title>
+<title>MedSafety CDS Pro | 用藥安全臨床決策支援</title>
+<script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-  :root {
-    --bg: #f0f4f8;
-    --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --border: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --accent-blue: #2563eb;
-    --accent-teal: #0d9488;
-    --accent-red: #dc2626;
-    --accent-amber: #d97706;
-    --accent-green: #16a34a;
-    --nav-bg: #0f172a;
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-    --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.1), 0 8px 32px rgba(0,0,0,0.06);
-  }
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #1c2230;
+  --border:    rgba(255,255,255,0.08);
+  --border2:   rgba(255,255,255,0.14);
+  --text:      #e6edf3;
+  --text2:     #8b949e;
+  --text3:     #484f58;
+  --green:     #3fb950;
+  --green-dim: rgba(63,185,80,0.15);
+  --amber:     #d29922;
+  --amber-dim: rgba(210,153,34,0.15);
+  --red:       #f85149;
+  --red-dim:   rgba(248,81,73,0.15);
+  --blue:      #58a6ff;
+  --blue-dim:  rgba(88,166,255,0.12);
+  --violet:    #bc8cff;
+  --violet-dim:rgba(188,140,255,0.12);
+}
 
-  * { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Noto Sans TC', sans-serif;
-    background: var(--bg);
-    color: var(--text-primary);
-    min-height: 100vh;
-  }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
 
-  /* ── 載入動畫 ── */
-  .fade-in {
-    animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+/* ── 載入器 ── */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+}
+.loader-ring {
+  width: 56px; height: 56px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  .stagger-1 { animation-delay: 0.05s; opacity: 0; }
-  .stagger-2 { animation-delay: 0.12s; opacity: 0; }
-  .stagger-3 { animation-delay: 0.19s; opacity: 0; }
-  .stagger-4 { animation-delay: 0.26s; opacity: 0; }
+/* ── 滾動條 ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
-  /* ── Spinner ── */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner {
-    width: 48px; height: 48px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent-blue);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
+/* ── Nav ── */
+.nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 40;
+}
 
-  /* ── Nav ── */
-  .nav-bar {
-    background: var(--nav-bg);
-    position: sticky; top: 0; z-index: 40;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    backdrop-filter: blur(12px);
-  }
+/* ── 病人橫幅 ── */
+.patient-banner {
+  background: linear-gradient(135deg, #0d2020 0%, #0a1a2e 100%);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.patient-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    -45deg, transparent, transparent 24px,
+    rgba(255,255,255,0.012) 24px, rgba(255,255,255,0.012) 25px
+  );
+}
+.patient-avatar {
+  width: 64px; height: 64px;
+  background: var(--green-dim);
+  border: 2px solid rgba(63,185,80,0.3);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; flex-shrink: 0;
+}
 
-  /* ── 病人卡片 ── */
-  .patient-card {
-    background: var(--surface);
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: var(--card-shadow);
-    overflow: hidden;
-  }
-  .patient-card-banner {
-    height: 6px;
-    background: linear-gradient(90deg, #2563eb, #0d9488, #16a34a);
-  }
+/* ── 卡片 ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
 
-  /* ── 指標卡片 ── */
-  .metric-card {
-    background: var(--surface);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    box-shadow: var(--card-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
-    overflow: hidden;
-  }
-  .metric-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--card-shadow-hover);
-  }
-  .metric-accent {
-    height: 3px;
-    border-radius: 3px 3px 0 0;
-  }
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap-8px;
+}
 
-  /* ── 通用卡片 ── */
-  .card {
-    background: var(--surface);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    box-shadow: var(--card-shadow);
-  }
+/* ── 指標大字 ── */
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  line-height: 1;
+}
 
-  /* ── CDS 面板 ── */
-  .cds-panel {
-    background: var(--nav-bg);
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-  }
-  .cds-item {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.07);
-    transition: background 0.15s;
-  }
-  .cds-item:hover { background: rgba(255,255,255,0.09); }
+/* ── 警示卡片 ── */
+.alert-card {
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex; gap: 12px; align-items: flex-start;
+  border-left: 3px solid;
+  position: relative;
+  overflow: hidden;
+}
+.alert-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.alert-critical  { background: var(--red-dim);    border-color: var(--red);    }
+.alert-warning   { background: var(--amber-dim);  border-color: var(--amber);  }
+.alert-info      { background: var(--blue-dim);   border-color: var(--blue);   }
+.alert-success   { background: var(--green-dim);  border-color: var(--green);  }
+.alert-med       { background: var(--violet-dim); border-color: var(--violet); }
 
-  /* ── 衛教卡片 ── */
-  .edu-card {
-    background: var(--surface);
-    border-radius: 14px;
-    border: 1px solid #d1fae5;
-    box-shadow: var(--card-shadow);
-  }
-  .edu-item {
-    background: #f0fdf4;
-    border-radius: 10px;
-    border: 1px solid #bbf7d0;
-    transition: background 0.15s;
-  }
-  .edu-item:hover { background: #dcfce7; }
+.alert-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+.alert-critical .alert-icon  { color: var(--red);    }
+.alert-warning  .alert-icon  { color: var(--amber);  }
+.alert-info     .alert-icon  { color: var(--blue);   }
+.alert-success  .alert-icon  { color: var(--green);  }
+.alert-med      .alert-icon  { color: var(--violet); }
 
-  /* ── Tab 按鈕 ── */
-  .tab-btn {
-    transition: all 0.15s;
-    font-weight: 500;
-  }
-  .tab-btn.active {
-    background: #0d9488 !important;
-    color: white !important;
-    border-color: #0d9488 !important;
-    box-shadow: 0 2px 8px rgba(13,148,136,0.3);
-  }
-  .edu-tab-content { display: none; }
-  .edu-tab-content.active { display: block; }
+/* ── 脈動點 ── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(248,81,73,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(248,81,73,0); }
+  100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+}
+.pulse-red {
+  display: inline-block; width: 8px; height: 8px;
+  background: var(--red); border-radius: 50%;
+  animation: pulse-ring 1.8s ease infinite;
+  flex-shrink: 0; margin-top: 5px;
+}
+@keyframes pulse-amber {
+  0%   { box-shadow: 0 0 0 0 rgba(210,153,34,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(210,153,34,0); }
+  100% { box-shadow: 0 0 0 0 rgba(210,153,34,0); }
+}
+.pulse-amber {
+  display: inline-block; width: 8px; height: 8px;
+  background: var(--amber); border-radius: 50%;
+  animation: pulse-amber 2.2s ease infinite;
+  flex-shrink: 0; margin-top: 5px;
+}
+.dot-green {
+  display: inline-block; width: 7px; height: 7px;
+  background: var(--green); border-radius: 50%; flex-shrink: 0;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.blink { animation: blink 1.5s ease-in-out infinite; }
 
-  /* ── 衛教 Modal ── */
-  .modal-backdrop {
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-  }
-  .edu-modal-inner {
-    background: var(--surface);
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.3);
-  }
-  .modal-header {
-    background: linear-gradient(135deg, #0d9488, #0f766e);
-  }
+/* ── 藥物標籤 ── */
+.med-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid;
+}
 
-  /* ── 表格 ── */
-  .obs-table th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .obs-row { transition: background 0.12s; }
-  .obs-row:hover { background: var(--surface-2); }
+/* ── 診斷標籤 ── */
+.cond-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  transition: border-color 0.15s;
+}
+.cond-chip:hover { border-color: var(--border2); }
 
-  /* ── Badge ── */
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600;
-  }
-  .badge-red    { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-  .badge-amber  { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-  .badge-green  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-  .badge-blue   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-  .badge-gray   { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+/* ── 分隔線 ── */
+.divider { border: none; border-top: 1px solid var(--border); }
 
-  /* ── 錯誤狀態 ── */
-  .error-box {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 16px;
-  }
+/* ── 淡入動畫 ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+.d1 { animation-delay: 0.04s; }
+.d2 { animation-delay: 0.10s; }
+.d3 { animation-delay: 0.17s; }
+.d4 { animation-delay: 0.24s; }
+.d5 { animation-delay: 0.31s; }
 
-  /* ── 數值大字 ── */
-  .value-display {
-    font-family: 'DM Mono', monospace;
-    font-weight: 500;
-    line-height: 1;
-  }
+/* ── CDS 面板標題 ── */
+.cds-panel {
+  background: linear-gradient(160deg, #0e1f1e 0%, #0d1117 100%);
+  border: 1px solid rgba(63,185,80,0.2);
+  border-radius: 14px;
+}
 
-  /* ── 狀態指示燈 ── */
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-  .status-dot.live {
-    background: #22c55e;
-    box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
-    animation: pulse-dot 2s infinite;
-  }
-  @keyframes pulse-dot {
-    0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
-    70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
-    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-  }
+/* ── Badge ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid;
+}
+.badge-red    { color: var(--red);    background: var(--red-dim);    border-color: rgba(248,81,73,0.3); }
+.badge-amber  { color: var(--amber);  background: var(--amber-dim);  border-color: rgba(210,153,34,0.3); }
+.badge-green  { color: var(--green);  background: var(--green-dim);  border-color: rgba(63,185,80,0.3); }
+.badge-blue   { color: var(--blue);   background: var(--blue-dim);   border-color: rgba(88,166,255,0.3); }
+.badge-violet { color: var(--violet); background: var(--violet-dim); border-color: rgba(188,140,255,0.3); }
+.badge-gray   { color: var(--text2);  background: var(--surface2);   border-color: var(--border2); }
 
-  /* ── 頁尾 ── */
-  footer { border-top: 1px solid var(--border); }
+/* ── 安全評分環 ── */
+.score-ring {
+  position: relative; width: 96px; height: 96px; flex-shrink: 0;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring .score-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px; font-weight: 500;
+}
 
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* ── 進度條 ── */
+.progress-bar {
+  height: 4px; border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 1s ease;
+}
+
+/* ── section 標題 ── */
+.section-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text3);
+}
 </style>
 </head>
 
 <body>
 
+<!-- ── 載入 ── -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div style="text-align:center">
+    <p style="color:var(--text);font-weight:600" id="loader-text">正在建立安全連線...</p>
+    <p style="color:var(--text2);font-size:12px;margin-top:4px" id="loader-sub">SMART on FHIR 認證中</p>
+  </div>
+</div>
+
 <!-- ── Nav ── -->
-<nav class="nav-bar">
-  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-        <i class="fa-solid fa-heart-pulse text-white text-sm"></i>
-      </div>
-      <span class="text-white font-semibold text-sm tracking-tight">糖尿病共照網品質儀表板</span>
+<nav class="nav px-6 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div style="width:32px;height:32px;background:var(--green-dim);border:1px solid rgba(63,185,80,0.4);border-radius:8px;display:flex;align-items:center;justify-content:center">
+      <i class="fa-solid fa-shield-halved" style="color:var(--green);font-size:14px"></i>
     </div>
-    <div class="flex items-center gap-2 text-xs text-slate-400">
-      <span class="status-dot live"></span>
-      <span class="font-mono">SMART on FHIR R4</span>
+    <span style="font-weight:700;font-size:15px">MedSafety <span style="color:var(--green)">CDS Pro</span></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="mode-badge" class="badge badge-gray" style="display:none"></div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
+      <span class="dot-green blink"></span>
+      <span style="font-family:'JetBrains Mono',monospace">FHIR R4</span>
     </div>
   </div>
 </nav>
 
-<main class="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+<!-- ── 主內容 ── -->
+<main id="main-content" style="display:none;max-width:1280px;margin:0 auto;padding:20px 20px 40px">
 
-  <!-- 載入中 -->
-  <div id="loading" class="flex flex-col items-center justify-center py-32 gap-5">
-    <div class="spinner"></div>
-    <div class="text-center">
-      <p class="text-slate-700 font-medium">正在連接 SMART 沙盒...</p>
-      <p class="mt-1 text-xs text-slate-400 font-mono" id="loading-detail">初始化 FHIR Client</p>
+  <!-- 病人橫幅 -->
+  <div class="patient-banner fade-up d1 mb-5 p-5">
+    <div style="display:flex;align-items:center;gap:16px;position:relative">
+      <div class="patient-avatar" id="p-avatar">👤</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:22px;font-weight:700;line-height:1.2" id="p-name">載入中...</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px" id="p-meta-badges"></div>
+      </div>
+      <div id="safety-score-box" style="text-align:center;flex-shrink:0"></div>
     </div>
   </div>
 
-  <!-- 錯誤 -->
-  <div id="error-box" class="hidden error-box max-w-lg mx-auto mt-20 p-8 text-center">
-    <div class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-      <i class="fa-solid fa-circle-exclamation text-2xl text-red-500"></i>
-    </div>
-    <h2 class="text-lg font-bold text-red-800 mb-2">資料讀取失敗</h2>
-    <p id="error-msg" class="text-sm text-red-600 leading-relaxed"></p>
-    <a href="https://launch.smarthealthit.org/" target="_blank"
-       class="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-      <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-      前往 SMART Launcher
-    </a>
-  </div>
+  <!-- 主格線 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px" id="grid-top">
 
-  <!-- 主要內容 -->
-  <div id="content" class="hidden">
-
-    <!-- 病人卡片 -->
-    <div class="patient-card mb-7 fade-in stagger-1">
-      <div class="patient-card-banner"></div>
-      <div class="p-6 flex flex-wrap items-center gap-5">
-        <div id="avatar-box"
-             class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl bg-blue-600 flex-shrink-0 shadow-md">
-          <i class="fa-solid fa-user"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <h1 class="text-2xl font-bold text-slate-900 truncate" id="ui-name">讀取中...</h1>
-          <div class="flex flex-wrap gap-3 mt-2">
-            <span class="badge badge-blue">
-              <i class="fa-solid fa-fingerprint text-[10px]"></i>
-              <span id="ui-id" class="font-mono">—</span>
-            </span>
-            <span class="badge badge-gray" id="ui-gender-badge">—</span>
-            <span class="badge badge-gray"><span id="ui-age">—</span> 歲</span>
-            <span class="badge badge-gray">
-              <i class="fa-solid fa-calendar-days text-[10px]"></i>
-              <span id="ui-dob">—</span>
-            </span>
-          </div>
-        </div>
-        <div class="text-right hidden sm:block">
-          <p class="text-xs text-slate-400">資料來源</p>
-          <p class="text-xs font-mono text-slate-500 mt-0.5">launch.smarthealthit.org</p>
-        </div>
+    <!-- 生理指標 -->
+    <div class="card fade-up d2">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-heart-pulse" style="color:var(--red);font-size:13px"></i>
+        <span class="section-label">生理指標</span>
+      </div>
+      <div id="vitals-content" style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <p style="color:var(--text2);font-size:13px">讀取中...</p>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- ── 左欄 ── -->
-      <div class="lg:col-span-2 space-y-6">
-
-        <!-- 指標卡片 -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 fade-in stagger-2">
-
-          <!-- HbA1c -->
-          <div class="metric-card" id="card-hba1c">
-            <div class="metric-accent bg-blue-600" id="hba1c-accent"></div>
-            <div class="p-5">
-              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
-                <i class="fa-solid fa-droplet mr-1 text-blue-500"></i>HbA1c
-              </p>
-              <div class="flex items-baseline gap-1 mb-2">
-                <span class="value-display text-4xl text-slate-900" id="ui-hba1c">—</span>
-                <span class="text-lg text-slate-400 font-light">%</span>
-              </div>
-              <p class="text-xs font-semibold" id="ui-hba1c-msg"></p>
-              <p class="text-xs text-slate-400 mt-1" id="ui-hba1c-date"></p>
-            </div>
-          </div>
-
-          <!-- 眼底 -->
-          <div class="metric-card">
-            <div class="metric-accent bg-orange-500"></div>
-            <div class="p-5">
-              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
-                <i class="fa-solid fa-eye mr-1 text-orange-500"></i>眼底檢查
-              </p>
-              <div class="mt-1">
-                <span class="text-base font-bold text-slate-800 leading-tight block" id="ui-eye-status">查詢中...</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-3" id="ui-eye-date"></p>
-            </div>
-          </div>
-
-          <!-- 足部 -->
-          <div class="metric-card">
-            <div class="metric-accent bg-violet-500"></div>
-            <div class="p-5">
-              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
-                <i class="fa-solid fa-shoe-prints mr-1 text-violet-500"></i>足部檢查
-              </p>
-              <div class="mt-1">
-                <span class="text-base font-bold text-slate-800 leading-tight block" id="ui-foot-status">查詢中...</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-3" id="ui-foot-date"></p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 趨勢圖 -->
-        <div class="card p-6 fade-in stagger-3">
-          <div class="flex items-start justify-between mb-1">
-            <div>
-              <h3 class="font-semibold text-slate-800">HbA1c 歷史趨勢</h3>
-              <p class="text-xs text-slate-400 mt-0.5">近四次檢測結果（%）</p>
-            </div>
-            <div class="flex items-center gap-4 text-xs text-slate-400 pt-1">
-              <span class="flex items-center gap-1.5">
-                <span class="w-3 h-[2px] bg-red-400 inline-block rounded"></span>危險 &gt;8%
-              </span>
-              <span class="flex items-center gap-1.5">
-                <span class="w-3 h-[2px] bg-amber-400 inline-block rounded"></span>注意 7–8%
-              </span>
-              <span class="flex items-center gap-1.5">
-                <span class="w-3 h-[2px] bg-green-500 inline-block rounded"></span>目標 &lt;7%
-              </span>
-            </div>
-          </div>
-          <canvas id="trendChart" height="90" class="mt-4"></canvas>
-        </div>
-
-        <!-- 近期檢驗 -->
-        <div class="card p-6 fade-in stagger-4">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-slate-800">近期檢驗紀錄</h3>
-            <span class="badge badge-blue">最近 20 筆</span>
-          </div>
-          <div id="obs-table">
-            <p class="text-slate-400 text-sm">載入中...</p>
-          </div>
-        </div>
-
-      </div><!-- /左欄 -->
-
-      <!-- ── 右欄 ── -->
-      <div class="space-y-5">
-
-        <!-- CDS -->
-        <div class="cds-panel p-5 fade-in stagger-2">
-          <div class="flex items-center gap-2 mb-4">
-            <div class="w-6 h-6 rounded-md bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-              <i class="fa-solid fa-brain text-blue-400 text-xs"></i>
-            </div>
-            <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Clinical Decision Support</span>
-          </div>
-          <div id="ui-suggestions" class="space-y-3 text-sm"></div>
-        </div>
-
-        <!-- 衛教 -->
-        <div class="edu-card p-5 fade-in stagger-3">
-          <div class="flex items-center gap-2 mb-4">
-            <div class="w-6 h-6 rounded-md bg-teal-100 flex items-center justify-center flex-shrink-0">
-              <i class="fa-solid fa-book-open text-teal-600 text-xs"></i>
-            </div>
-            <h3 class="font-semibold text-teal-700">糖尿病衛教專區</h3>
-          </div>
-          <div id="education-content" class="space-y-3"></div>
-          <button onclick="showEducationModal()"
-                  class="mt-4 w-full bg-teal-600 text-white py-2.5 rounded-xl hover:bg-teal-700 active:scale-[0.98] transition-all text-sm font-semibold flex items-center justify-center gap-2">
-            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-            查看完整衛教資源庫
-          </button>
-        </div>
-
-      </div><!-- /右欄 -->
+    <!-- 臨床診斷 -->
+    <div class="card fade-up d3">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-file-medical" style="color:var(--blue);font-size:13px"></i>
+        <span class="section-label">臨床診斷</span>
+        <span class="badge badge-blue" id="cond-count" style="margin-left:auto"></span>
+      </div>
+      <div id="cond-content" style="padding:14px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto">
+        <p style="color:var(--text2);font-size:13px">讀取中...</p>
+      </div>
     </div>
-  </div><!-- /content -->
+
+    <!-- 目前用藥 -->
+    <div class="card fade-up d4">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-pills" style="color:var(--violet);font-size:13px"></i>
+        <span class="section-label">目前用藥</span>
+        <span class="badge badge-violet" id="med-count" style="margin-left:auto"></span>
+      </div>
+      <div id="med-content" style="padding:14px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto">
+        <p style="color:var(--text2);font-size:13px">讀取中...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDS 建議 + 安全警告 全寬 -->
+  <div class="cds-panel fade-up d5 mt-4 p-5">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:var(--green-dim);border:1px solid rgba(63,185,80,0.3);border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="fa-solid fa-brain" style="color:var(--green);font-size:12px"></i>
+        </div>
+        <span style="font-weight:700;font-size:13px;color:var(--green)">CDS 臨床決策支援</span>
+        <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">— 基於 FHIR 資料即時運算</span>
+      </div>
+      <div id="cds-summary-badges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- 安全警告區 -->
+    <div id="safety-alerts" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+
+    <hr class="divider" style="margin-bottom:16px">
+
+    <!-- CDS 建議區 -->
+    <div style="margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3)">
+      個人化管理建議
+    </div>
+    <div id="cds-recommendations" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+  </div>
+
 </main>
 
-<!-- ── 衛教 Modal ── -->
-<div id="education-modal" class="hidden fixed inset-0 modal-backdrop items-center justify-center z-50 p-4">
-  <div class="edu-modal-inner max-w-2xl w-full mx-auto overflow-hidden max-h-[90vh] flex flex-col">
-
-    <!-- Header -->
-    <div class="modal-header text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <i class="fa-solid fa-book-medical text-teal-200"></i>
-        <h2 class="text-base font-bold">糖尿病衛教資源庫</h2>
-      </div>
-      <button onclick="hideEducationModal()"
-              class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
-    </div>
-
-    <!-- 警示 -->
-    <div id="edu-modal-alert" class="hidden px-5 pt-4 flex-shrink-0">
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 flex gap-2.5">
-        <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0 text-amber-500"></i>
-        <span id="edu-modal-alert-text"></span>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="flex gap-2 px-5 pt-4 flex-shrink-0 flex-wrap">
-      <button onclick="switchEduTab('diet')"    class="tab-btn active text-xs px-3 py-1.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">🥗 飲食</button>
-      <button onclick="switchEduTab('exercise')" class="tab-btn text-xs px-3 py-1.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">🏃 運動</button>
-      <button onclick="switchEduTab('monitor')"  class="tab-btn text-xs px-3 py-1.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">📊 監測</button>
-      <button onclick="switchEduTab('complication')" class="tab-btn text-xs px-3 py-1.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">🛡️ 併發症</button>
-      <button onclick="switchEduTab('medication')" class="tab-btn text-xs px-3 py-1.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">💊 用藥</button>
-    </div>
-
-    <!-- 衛教內容 -->
-    <div class="px-5 pb-2 pt-4 overflow-y-auto flex-1 text-sm space-y-6">
-
-      <!-- 飲食 -->
-      <div class="edu-tab-content active" id="tab-diet">
-        <h3 class="font-bold text-slate-700 mb-3">飲食控制原則</h3>
-        <div class="space-y-2">
-          <div class="flex gap-3 p-3.5 bg-teal-50 rounded-xl border border-teal-100">
-            <span class="text-xl flex-shrink-0">🌾</span>
-            <div><p class="font-semibold text-slate-700">選擇低 GI 食物</p><p class="text-slate-500 text-xs mt-1">糙米、燕麥、全麥麵包取代白飯白麵，穩定飯後血糖。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-teal-50 rounded-xl border border-teal-100">
-            <span class="text-xl flex-shrink-0">🥦</span>
-            <div><p class="font-semibold text-slate-700">多吃蔬菜</p><p class="text-slate-500 text-xs mt-1">每餐至少半盤蔬菜，提供膳食纖維，延緩糖分吸收。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-teal-50 rounded-xl border border-teal-100">
-            <span class="text-xl flex-shrink-0">🍬</span>
-            <div><p class="font-semibold text-slate-700">限制精製糖與含糖飲料</p><p class="text-slate-500 text-xs mt-1">避免手搖飲、果汁、甜點，改喝無糖飲品。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-teal-50 rounded-xl border border-teal-100">
-            <span class="text-xl flex-shrink-0">⚖️</span>
-            <div><p class="font-semibold text-slate-700">定時定量</p><p class="text-slate-500 text-xs mt-1">規律三餐，不跳餐，避免血糖大幅波動。</p></div>
-          </div>
-        </div>
-        <div class="mt-3 p-3 bg-blue-50 rounded-xl text-xs text-blue-700 border border-blue-100">
-          📖 延伸閱讀：<a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=189" target="_blank" class="underline font-medium">國健署糖尿病飲食指南</a>
-        </div>
-      </div>
-
-      <!-- 運動 -->
-      <div class="edu-tab-content" id="tab-exercise">
-        <h3 class="font-bold text-slate-700 mb-3">運動建議</h3>
-        <div class="space-y-2">
-          <div class="flex gap-3 p-3.5 bg-blue-50 rounded-xl border border-blue-100">
-            <span class="text-xl flex-shrink-0">🚶</span>
-            <div><p class="font-semibold text-slate-700">每週 150 分鐘有氧運動</p><p class="text-slate-500 text-xs mt-1">快走、游泳、騎腳踏車皆可，分散於每週至少 5 天。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-blue-50 rounded-xl border border-blue-100">
-            <span class="text-xl flex-shrink-0">💪</span>
-            <div><p class="font-semibold text-slate-700">每週 2 次阻力訓練</p><p class="text-slate-500 text-xs mt-1">啞鈴、彈力帶或徒手運動，增加肌肉量有助血糖控制。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
-            <span class="text-xl flex-shrink-0">⚠️</span>
-            <div><p class="font-semibold text-slate-700">運動前後測血糖</p><p class="text-slate-500 text-xs mt-1">血糖 &lt;100 mg/dL 時先補充點心，避免低血糖。</p></div>
-          </div>
-        </div>
-        <div class="mt-3 p-3 bg-blue-50 rounded-xl text-xs text-blue-700 border border-blue-100">
-          📖 延伸閱讀：<a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=190" target="_blank" class="underline font-medium">國健署運動建議</a>
-        </div>
-      </div>
-
-      <!-- 監測 -->
-      <div class="edu-tab-content" id="tab-monitor">
-        <h3 class="font-bold text-slate-700 mb-3">血糖自我監測</h3>
-        <div class="space-y-2">
-          <div class="flex gap-3 p-3.5 bg-violet-50 rounded-xl border border-violet-100">
-            <span class="text-xl flex-shrink-0">📊</span>
-            <div><p class="font-semibold text-slate-700">建議監測時間點</p><p class="text-slate-500 text-xs mt-1">空腹（目標 80–130）、飯後 2 小時（目標 &lt;180）、睡前（目標 100–150）。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-violet-50 rounded-xl border border-violet-100">
-            <span class="text-xl flex-shrink-0">📓</span>
-            <div><p class="font-semibold text-slate-700">記錄血糖日誌</p><p class="text-slate-500 text-xs mt-1">每次測量後記錄數值、飲食、運動與用藥，供醫師調整治療。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-violet-50 rounded-xl border border-violet-100">
-            <span class="text-xl flex-shrink-0">🩸</span>
-            <div><p class="font-semibold text-slate-700">HbA1c 每 3 個月追蹤</p><p class="text-slate-500 text-xs mt-1">反映過去 2–3 個月的血糖平均值，目標 &lt;7%。</p></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 併發症 -->
-      <div class="edu-tab-content" id="tab-complication">
-        <h3 class="font-bold text-slate-700 mb-3">併發症預防</h3>
-        <div class="space-y-2">
-          <div class="flex gap-3 p-3.5 bg-orange-50 rounded-xl border border-orange-100">
-            <span class="text-xl flex-shrink-0">👁️</span>
-            <div><p class="font-semibold text-slate-700">眼底檢查（每年一次）</p><p class="text-slate-500 text-xs mt-1">早期發現糖尿病視網膜病變，預防失明。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-orange-50 rounded-xl border border-orange-100">
-            <span class="text-xl flex-shrink-0">🦶</span>
-            <div><p class="font-semibold text-slate-700">足部護理（每天檢查）</p><p class="text-slate-500 text-xs mt-1">每天檢查足部有無傷口，穿合適鞋子，避免赤腳行走。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-orange-50 rounded-xl border border-orange-100">
-            <span class="text-xl flex-shrink-0">🫘</span>
-            <div><p class="font-semibold text-slate-700">腎功能檢查（每年一次）</p><p class="text-slate-500 text-xs mt-1">尿液微量白蛋白及血肌酐監測，預防糖尿病腎病。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-orange-50 rounded-xl border border-orange-100">
-            <span class="text-xl flex-shrink-0">❤️</span>
-            <div><p class="font-semibold text-slate-700">心血管風險管理</p><p class="text-slate-500 text-xs mt-1">控制血壓（&lt;130/80）、血脂，戒菸，降低心臟病與中風風險。</p></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 用藥 -->
-      <div class="edu-tab-content" id="tab-medication">
-        <h3 class="font-bold text-slate-700 mb-3">用藥注意事項</h3>
-        <div class="space-y-2">
-          <div class="flex gap-3 p-3.5 bg-red-50 rounded-xl border border-red-100">
-            <span class="text-xl flex-shrink-0">⏰</span>
-            <div><p class="font-semibold text-slate-700">按時服藥</p><p class="text-slate-500 text-xs mt-1">不可自行停藥或調整劑量，如有副作用請告知醫師。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-red-50 rounded-xl border border-red-100">
-            <span class="text-xl flex-shrink-0">💉</span>
-            <div><p class="font-semibold text-slate-700">胰島素注射技術</p><p class="text-slate-500 text-xs mt-1">輪換注射部位，避免局部硬塊；注射後請勿按摩。</p></div>
-          </div>
-          <div class="flex gap-3 p-3.5 bg-red-50 rounded-xl border border-red-100">
-            <span class="text-xl flex-shrink-0">🍬</span>
-            <div><p class="font-semibold text-slate-700">低血糖應對（15-15 法則）</p><p class="text-slate-500 text-xs mt-1">血糖 &lt;70 時立即補充 15 克醣（3 顆方糖），15 分鐘後再測。</p></div>
-          </div>
-        </div>
-        <div class="mt-3 p-3 bg-blue-50 rounded-xl text-xs text-blue-700 border border-blue-100">
-          📖 延伸閱讀：<a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=191" target="_blank" class="underline font-medium">衛福部糖尿病用藥指引</a>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Footer -->
-    <div class="px-5 py-4 border-t border-slate-100 flex-shrink-0">
-      <button onclick="hideEducationModal()"
-              class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] rounded-xl text-sm font-medium transition-all text-slate-600">
-        關閉視窗
-      </button>
-    </div>
-  </div>
+<!-- ── 錯誤區 ── -->
+<div id="error-box" style="display:none;max-width:500px;margin:80px auto;padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:center">
+  <i class="fa-solid fa-circle-exclamation" style="font-size:32px;color:var(--red);margin-bottom:12px"></i>
+  <h2 style="font-size:16px;font-weight:700;color:var(--red);margin-bottom:8px">連線失敗</h2>
+  <p id="error-msg" style="font-size:13px;color:var(--text2);line-height:1.6"></p>
+  <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer">重新載入</button>
 </div>
 
-<footer class="text-center text-slate-400 text-xs py-8 mt-6">
-  <p>© 2026 糖尿病共照網品質監測系統</p>
-  <p class="mt-1 font-mono text-[11px] text-slate-300">Powered by FHIR R4 &amp; SMART on FHIR</p>
-</footer>
-
 <script>
-let currentChart = null;
+// ══════════════════════════════════════════════════════════════
+// LOINC codes
+const LOINC_BP_PANEL = '85354-9';
+const LOINC_SBP      = '8480-6';
+const LOINC_DBP      = '8462-4';
+const LOINC_HBAC     = '4548-4';
+const LOINC_GLUCOSE  = '2345-7';
+const LOINC_CREAT    = '2160-0';
+const LOINC_HR       = '8867-4';
 
-// ── 工具函式 ──────────────────────────────────────────────────
-function calcAge(birthDate) {
-  if (!birthDate) return '不詳';
-  const today = new Date();
-  const dob = new Date(birthDate);
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-  return age;
-}
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  return dateStr.slice(0, 10);
-}
-function setLoading(msg) {
-  const el = document.getElementById('loading-detail');
-  if (el) el.textContent = msg;
+// ── 藥物安全知識庫（CDS 規則引擎） ─────────────────────────────
+const DRUG_INTERACTIONS = [
+  { drugs: ['warfarin','華法林'], flagWith: ['aspirin','阿斯匹靈','ibuprofen','布洛芬'], severity: 'critical',
+    msg: 'Warfarin + NSAIDs 嚴重交互作用：大幅增加出血風險，應監測 INR 並評估替代療法。' },
+  { drugs: ['metformin','二甲雙胍','metformin hcl'], flagWith: ['ibuprofen','布洛芬','naproxen'],
+    severity: 'warning', msg: 'Metformin + NSAIDs：NSAID 可能降低腎臟灌流，增加乳酸中毒風險。' },
+  { drugs: ['lisinopril','losartan','amlodipine','ramipril','enalapril'], flagWith: ['potassium','氯化鉀','spironolactone','螺內酯'],
+    severity: 'warning', msg: 'ACEI/ARB + 保鉀藥物：注意高鉀血症風險，定期監測血鉀。' },
+  { drugs: ['simvastatin','辛伐他汀'], flagWith: ['amlodipine','氨氯地平'],
+    severity: 'warning', msg: 'Simvastatin + Amlodipine：Simvastatin 劑量應≤20mg，高劑量恐引發肌病。' },
+  { drugs: ['digoxin','地高辛'], flagWith: ['amiodarone','胺碘酮','clarithromycin'],
+    severity: 'critical', msg: 'Digoxin 交互作用：血中濃度可能升高至毒性範圍，需監測心律與 Digoxin 濃度。' },
+];
+
+// 診斷驅動建議
+const CONDITION_RECOMMENDATIONS = {
+  '高血壓':     { icon: 'fa-heart', color: 'var(--blue)',   text: '建議每日量測血壓，目標 <130/80 mmHg。低鈉飲食（<2g/日），定期追蹤腎功能與電解質。' },
+  'hypertension':{ icon: 'fa-heart', color: 'var(--blue)',  text: '血壓管理目標 <130/80 mmHg，優先使用 ACEI/ARB 保護腎臟，定期評估心血管風險。' },
+  '糖尿病':     { icon: 'fa-droplet', color: 'var(--amber)', text: 'HbA1c 目標 <7%，空腹血糖 80–130 mg/dL。每年完成眼底、足部、腎功能篩檢。' },
+  'diabetes':   { icon: 'fa-droplet', color: 'var(--amber)', text: 'HbA1c target <7%. Annual screening for retinopathy, nephropathy, and neuropathy.' },
+  '心臟衰竭':   { icon: 'fa-heart-crack', color: 'var(--red)', text: '每日監測體重，增加 >2kg/3日需就醫。嚴格限水（<1.5L/日），低鈉飲食。' },
+  '慢性腎臟病': { icon: 'fa-kidney', color: 'var(--violet)', text: 'CKD 患者應避免 NSAIDs；Metformin 在 eGFR<30 時應停用；調整腎排泄藥物劑量。' },
+  '心房顫動':   { icon: 'fa-wave-square', color: 'var(--red)', text: '評估 CHA₂DS₂-VASc 分數，考慮抗凝治療。避免高危出血活動，監測 INR（若用 Warfarin）。' },
+};
+
+// 高風險藥物警示
+const HIGH_ALERT_MEDS = [
+  { keywords: ['warfarin','華法林'],       level: 'critical', reason: '窄治療窗口藥物，需定期監測 INR（目標 2–3），注意出血徵兆。' },
+  { keywords: ['insulin','胰島素'],        level: 'warning',  reason: '注意低血糖風險（血糖<70 mg/dL），教導 15-15 法則，備妥葡萄糖片。' },
+  { keywords: ['digoxin','地高辛'],        level: 'critical', reason: '窄治療窗口；毒性症狀包含噁心、視覺黃綠色改變、心律不整。' },
+  { keywords: ['methotrexate','甲氨蝶呤'], level: 'critical', reason: '每週劑量（非每日）；需補充葉酸；監測肝腎功能與全血球計數。' },
+  { keywords: ['lithium','鋰鹽'],          level: 'critical', reason: '窄治療窗口；避免缺水與低鈉；監測鋰濃度、腎功能與甲狀腺功能。' },
+  { keywords: ['amiodarone','胺碘酮'],     level: 'warning',  reason: '多重器官毒性：肺、甲狀腺、肝；長期使用需定期監測肺功能與甲狀腺。' },
+  { keywords: ['opioid','嗎啡','oxycodone','fentanyl','芬太尼'], level: 'warning', reason: '呼吸抑制風險；注意與苯二氮䓬類藥物合用；評估疼痛與成癮風險。' },
+  { keywords: ['metformin','二甲雙胍'],    level: 'info',     reason: '造影檢查前後 48 小時暫停；eGFR<45 時減量，eGFR<30 時停用。' },
+];
+
+// ══════════════════════════════════════════════════════════════
+function setLoader(text, sub) {
+  const t = document.getElementById('loader-text');
+  const s = document.getElementById('loader-sub');
+  if (t) t.textContent = text;
+  if (s && sub) s.textContent = sub;
 }
 function showError(msg) {
-  document.getElementById('loading').classList.add('hidden');
-  const box = document.getElementById('error-box');
-  box.classList.remove('hidden');
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('error-box').style.display = 'block';
   document.getElementById('error-msg').textContent = msg;
 }
 
-// ── 主要初始化 ────────────────────────────────────────────────
-async function initApp() {
+// ── 主流程 ─────────────────────────────────────────────────────
+async function init() {
+  setLoader('正在進行 SMART on FHIR 認證...', 'SMART on FHIR 認證中');
   try {
-    setLoading('連接 FHIR Client...');
-    const client = await FHIR.oauth2.ready();
-
-    setLoading('讀取病人基本資料...');
-    const patient = await client.patient.read();
-
-    document.getElementById('loading').classList.add('hidden');
-    const content = document.getElementById('content');
-    content.classList.remove('hidden');
-
-    // 姓名
-    const nameObj = patient.name?.[0];
-    const displayName = nameObj?.text
-      || [nameObj?.family, ...(nameObj?.given || [])].filter(Boolean).join(' ')
-      || '未知姓名';
-    document.getElementById('ui-name').textContent = displayName;
-
-    // ID / 性別 / 年齡 / 生日
-    document.getElementById('ui-id').textContent = patient.id;
-
-    const genderText = patient.gender === 'male' ? '男' : patient.gender === 'female' ? '女' : patient.gender || '不詳';
-    document.getElementById('ui-gender-badge').textContent = genderText;
-    document.getElementById('ui-age').textContent = calcAge(patient.birthDate);
-    document.getElementById('ui-dob').textContent = patient.birthDate || '不詳';
-
-    // Avatar 顏色
-    const avatarEl = document.getElementById('avatar-box');
-    avatarEl.className = avatarEl.className.replace('bg-blue-600',
-      patient.gender === 'female' ? 'bg-pink-500' : 'bg-blue-600');
-
-    // ── HbA1c ──────────────────────────────────────────────
-    setLoading('查詢 HbA1c...');
-    let hba1cValue = null, hba1cDate = '', hba1cHistory = [];
-
-    try {
-      const obsBundle = await client.request(
-        'Observation?code=4548-4&_sort=-date&_count=10', { flat: false });
-      const obsList = (obsBundle?.entry || []).map(e => e.resource).filter(Boolean);
-      if (obsList.length > 0) {
-        const sorted = obsList.sort((a, b) =>
-          new Date(b.effectiveDateTime || b.issued || 0) -
-          new Date(a.effectiveDateTime || a.issued || 0));
-        hba1cValue = sorted[0].valueQuantity?.value ?? null;
-        hba1cDate = sorted[0].effectiveDateTime || sorted[0].issued || '';
-        hba1cHistory = sorted.slice(0, 4).reverse().map(o => o.valueQuantity?.value ?? null);
-      }
-    } catch (e) {
-      console.warn('HbA1c query failed, trying fallback:', e);
-      try {
-        const obsBundle2 = await client.request(
-          'Observation?code=http%3A%2F%2Floinc.org%7C4548-4&_sort=-date&_count=10', { flat: false });
-        const obsList2 = (obsBundle2?.entry || []).map(e => e.resource).filter(Boolean);
-        if (obsList2.length > 0) {
-          const sorted2 = obsList2.sort((a, b) =>
-            new Date(b.effectiveDateTime || b.issued || 0) -
-            new Date(a.effectiveDateTime || a.issued || 0));
-          hba1cValue = sorted2[0].valueQuantity?.value ?? null;
-          hba1cDate = sorted2[0].effectiveDateTime || sorted2[0].issued || '';
-          hba1cHistory = sorted2.slice(0, 4).reverse().map(o => o.valueQuantity?.value ?? null);
-        }
-      } catch(e2) { console.warn('HbA1c fallback also failed:', e2); }
-    }
-
-    if (hba1cValue !== null) {
-      document.getElementById('ui-hba1c').textContent = hba1cValue.toFixed(1);
-
-      const msgEl = document.getElementById('ui-hba1c-msg');
-      const accentEl = document.getElementById('hba1c-accent');
-      if (hba1cValue > 8.0) {
-        msgEl.textContent = '顯著偏高，需積極處置';
-        msgEl.className = 'text-xs font-semibold text-red-600';
-        accentEl.className = 'metric-accent bg-red-500';
-      } else if (hba1cValue > 7.0) {
-        msgEl.textContent = '高於目標值（>7%）';
-        msgEl.className = 'text-xs font-semibold text-amber-600';
-        accentEl.className = 'metric-accent bg-amber-500';
-      } else {
-        msgEl.textContent = '控制良好 ✓';
-        msgEl.className = 'text-xs font-semibold text-green-600';
-        accentEl.className = 'metric-accent bg-green-500';
-      }
-
-      document.getElementById('ui-hba1c-date').textContent =
-        hba1cDate ? '最後測定：' + formatDate(hba1cDate) : '';
-    } else {
-      document.getElementById('ui-hba1c').textContent = 'N/A';
-      const msgEl = document.getElementById('ui-hba1c-msg');
-      msgEl.textContent = '沙盒無 HbA1c 資料';
-      msgEl.className = 'text-xs font-semibold text-slate-400';
-    }
-
-    updateEducationSection(hba1cValue);
-    updateCDS(hba1cValue);
-
-    const chartData = hba1cHistory.length > 0 ? hba1cHistory : [6.8, 7.1, 7.5, hba1cValue || 7.2];
-    const chartColor = (hba1cValue || 0) > 7.5 ? '#ef4444' : (hba1cValue || 0) > 7.0 ? '#f59e0b' : '#22c55e';
-    updateChart(chartData, chartColor);
-
-    // ── 眼底 ───────────────────────────────────────────
-    setLoading('查詢眼底檢查紀錄...');
-    await queryExam(client, {
-      codes: ['29272-0', '57127-0', '24583-0'],
-      statusId: 'ui-eye-status', dateId: 'ui-eye-date',
-      label: '眼底檢查', monthsWarning: 12
-    });
-
-    // ── 足部 ───────────────────────────────────────────
-    setLoading('查詢足部檢查紀錄...');
-    await queryExam(client, {
-      codes: ['54397-6', '59774-9'],
-      statusId: 'ui-foot-status', dateId: 'ui-foot-date',
-      label: '足部檢查', monthsWarning: 12
-    });
-
-    // ── 檢驗列表 ───────────────────────────────────────
-    setLoading('載入完整檢驗列表...');
-    await loadObsTable(client);
-
+    const smart = await FHIR.oauth2.ready();
+    setLoader('連線成功，讀取病人資料...', `Patient ID: ${smart.patient.id}`);
+    const pid = smart.patient.id;
+    const [patient, bpObs, hba1cObs, otherObs, conds, meds, allergies] = await Promise.all([
+      smart.request(`Patient/${pid}`),
+      smart.request(`Observation?patient=${pid}&code=${LOINC_BP_PANEL}&_sort=-date&_count=3`),
+      smart.request(`Observation?patient=${pid}&code=${LOINC_HBAC}&_sort=-date&_count=4`),
+      smart.request(`Observation?patient=${pid}&code=${LOINC_HR},${LOINC_GLUCOSE},${LOINC_CREAT}&_sort=-date&_count=6`),
+      smart.request(`Condition?patient=${pid}&clinical-status=active`),
+      smart.request(`MedicationRequest?patient=${pid}&status=active`),
+      smart.request(`AllergyIntolerance?patient=${pid}`).catch(()=>({entry:[]}))
+    ]);
+    renderAll(patient, bpObs, hba1cObs, otherObs, conds, meds, allergies, true);
   } catch (err) {
-    console.error('initApp error:', err);
-    showError(`讀取失敗：${err.message || err}。請確認已在 SMART Launcher 選擇病人並完成授權。`);
+    console.warn('SMART failed:', err);
+    setLoader('SMART 授權失敗，切換至 DEMO 模式...', '連接 hapi.fhir.tw');
+    setTimeout(loadDemo, 1200);
   }
 }
 
-// ── 查詢檢查項目 ──────────────────────────────────────────────
-async function queryExam(client, { codes, statusId, dateId, label, monthsWarning }) {
-  const statusEl = document.getElementById(statusId);
-  const dateEl = document.getElementById(dateId);
+async function loadDemo() {
   try {
-    let found = null;
-    for (const code of codes) {
-      try {
-        const bundle = await client.request(
-          `Observation?code=${encodeURIComponent(code)}&_sort=-date&_count=1`, { flat: false });
-        const res = bundle?.entry?.[0]?.resource;
-        if (res) { found = res; break; }
-      } catch(e) { /* next */ }
-    }
-    if (!found) {
-      for (const code of codes) {
-        try {
-          const bundle = await client.request(
-            `Procedure?code=${encodeURIComponent(code)}&_sort=-date&_count=1`, { flat: false });
-          const res = bundle?.entry?.[0]?.resource;
-          if (res) { found = { _type: 'Procedure', ...res }; break; }
-        } catch(e) { /* next */ }
-      }
-    }
-    if (found) {
-      const dateStr = found.effectiveDateTime || found.performedDateTime
-        || found.performedPeriod?.end || found.issued || '';
-      const daysAgo = dateStr ? Math.floor((Date.now() - new Date(dateStr)) / 86400000) : null;
-      const overdue = daysAgo !== null && daysAgo > monthsWarning * 30;
-      statusEl.textContent = overdue ? `⚠️ 已逾 ${Math.round(daysAgo/30)} 個月` : '✅ 已完成';
-      statusEl.className = `text-base font-bold ${overdue ? 'text-amber-600' : 'text-green-600'}`;
-      if (dateStr) dateEl.textContent = '最後紀錄：' + formatDate(dateStr);
-    } else {
-      statusEl.textContent = '⚠️ 無紀錄（建議安排）';
-      statusEl.className = 'text-base font-bold text-amber-600';
-      dateEl.textContent = '沙盒中查無此項目資料';
-    }
+    const client = new FHIR.Client({ serverUrl: 'https://hapi.fhir.tw/fhir' });
+    setLoader('讀取 DEMO 病人資料...', 'hapi.fhir.tw/fhir');
+    const patBundle = await client.request('Patient?_count=1');
+    const patient = patBundle.entry?.[0]?.resource;
+    if (!patient) throw new Error('無測試病患');
+    const pid = patient.id;
+    const [bpObs, hba1cObs, otherObs, conds, meds, allergies] = await Promise.all([
+      client.request(`Observation?patient=${pid}&code=${LOINC_BP_PANEL}&_sort=-date&_count=3`).catch(()=>({entry:[]})),
+      client.request(`Observation?patient=${pid}&code=${LOINC_HBAC}&_sort=-date&_count=4`).catch(()=>({entry:[]})),
+      client.request(`Observation?patient=${pid}&code=${LOINC_HR},${LOINC_GLUCOSE},${LOINC_CREAT}&_sort=-date&_count=6`).catch(()=>({entry:[]})),
+      client.request(`Condition?patient=${pid}&clinical-status=active`).catch(()=>({entry:[]})),
+      client.request(`MedicationRequest?patient=${pid}&status=active`).catch(()=>({entry:[]})),
+      client.request(`AllergyIntolerance?patient=${pid}`).catch(()=>({entry:[]}))
+    ]);
+    renderAll(patient, bpObs, hba1cObs, otherObs, conds, meds, allergies, false);
   } catch (e) {
-    statusEl.textContent = '查詢失敗';
-    statusEl.className = 'text-base font-bold text-slate-400';
+    showError(`DEMO 模式失敗：${e.message}`);
   }
 }
 
-// ── 近期檢驗列表 ──────────────────────────────────────────────
-async function loadObsTable(client) {
-  const container = document.getElementById('obs-table');
-  try {
-    const bundle = await client.request('Observation?_sort=-date&_count=20', { flat: false });
-    const list = (bundle?.entry || []).map(e => e.resource).filter(Boolean);
-    if (list.length === 0) {
-      container.innerHTML = '<p class="text-slate-400 text-sm py-4 text-center">沙盒無檢驗資料</p>';
-      return;
-    }
-    const rows = list.map((o, i) => {
-      const code = o.code?.text || o.code?.coding?.[0]?.display || o.code?.coding?.[0]?.code || '—';
-      const val = o.valueQuantity
-        ? `${o.valueQuantity.value} ${o.valueQuantity.unit || ''}`
-        : o.valueString || o.valueCodeableConcept?.text || '—';
-      const date = formatDate(o.effectiveDateTime || o.issued || '');
-      return `<tr class="obs-row border-t border-slate-50">
-        <td class="py-2.5 pr-4 text-slate-700 text-sm">${code}</td>
-        <td class="py-2.5 pr-4 font-mono font-semibold text-slate-800 text-sm">${val}</td>
-        <td class="py-2.5 text-slate-400 text-xs whitespace-nowrap">${date}</td>
-      </tr>`;
-    }).join('');
-    container.innerHTML = `
-      <table class="w-full">
-        <thead><tr class="obs-table">
-          <th class="pb-3 pr-4 text-left font-semibold text-slate-400 text-xs uppercase tracking-wide">項目</th>
-          <th class="pb-3 pr-4 text-left font-semibold text-slate-400 text-xs uppercase tracking-wide">數值</th>
-          <th class="pb-3 text-left font-semibold text-slate-400 text-xs uppercase tracking-wide">日期</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } catch (e) {
-    container.innerHTML = `<p class="text-slate-400 text-sm">載入檢驗列表失敗：${e.message}</p>`;
+// ── 渲染主函式 ─────────────────────────────────────────────────
+function renderAll(patient, bpObs, hba1cObs, otherObs, conds, meds, allergies, isSmart) {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+
+  if (!isSmart) {
+    const b = document.getElementById('mode-badge');
+    b.style.display = 'inline-flex';
+    b.className = 'badge badge-amber';
+    b.innerHTML = '🔬 DEMO (hapi.fhir.tw)';
   }
+
+  // ── 病人資訊 ──────────────────────────────────────────────
+  const nameObj = patient.name?.[0];
+  const name = nameObj?.text
+    || [nameObj?.family, ...(nameObj?.given||[])].filter(Boolean).join(' ')
+    || '匿名病患';
+  document.getElementById('p-name').textContent = name;
+
+  let age = null;
+  if (patient.birthDate) {
+    const dob = new Date(patient.birthDate);
+    age = Math.floor((Date.now() - dob) / 31557600000);
+  }
+  const gMap = { male:'男性', female:'女性', other:'其他', unknown:'不詳' };
+  const gender = gMap[patient.gender] || '不詳';
+
+  const metaDiv = document.getElementById('p-meta-badges');
+  metaDiv.innerHTML = `
+    <span class="badge badge-gray">${gender}</span>
+    ${age !== null ? `<span class="badge badge-gray">${age} 歲</span>` : ''}
+    ${patient.birthDate ? `<span class="badge badge-gray"><i class="fa-solid fa-calendar-days" style="font-size:9px"></i>&nbsp;${patient.birthDate}</span>` : ''}
+    <span class="badge badge-gray" style="font-family:'JetBrains Mono',monospace;font-size:10px">ID: ${patient.id}</span>
+  `;
+
+  // Avatar 顏色
+  document.getElementById('p-avatar').style.background =
+    patient.gender === 'female' ? 'rgba(188,140,255,0.15)' : 'var(--green-dim)';
+
+  // ── 解析資料 ─────────────────────────────────────────────
+  // 血壓
+  const bpList = (bpObs.entry||[]).map(e=>e.resource);
+  let sbpVal=null, dbpVal=null, bpDate=null;
+  if (bpList.length > 0) {
+    const first = bpList[0];
+    const sbpComp = first.component?.find(c => c.code.coding?.some(cc=>cc.code===LOINC_SBP));
+    const dbpComp = first.component?.find(c => c.code.coding?.some(cc=>cc.code===LOINC_DBP));
+    sbpVal = sbpComp?.valueQuantity?.value ?? null;
+    dbpVal = dbpComp?.valueQuantity?.value ?? null;
+    bpDate = first.effectiveDateTime || first.issued || null;
+  }
+
+  // HbA1c
+  const hba1cList = (hba1cObs.entry||[]).map(e=>e.resource)
+    .sort((a,b)=>new Date(b.effectiveDateTime||0)-new Date(a.effectiveDateTime||0));
+  const hba1cVal = hba1cList[0]?.valueQuantity?.value ?? null;
+
+  // 其他觀察
+  const otherList = (otherObs.entry||[]).map(e=>e.resource);
+  const findObs = (code) => otherList.find(o=>o.code?.coding?.some(c=>c.code===code))?.valueQuantity?.value ?? null;
+  const hrVal  = findObs(LOINC_HR);
+  const glcVal = findObs(LOINC_GLUCOSE);
+  const creatVal = findObs(LOINC_CREAT);
+
+  // 診斷
+  const condList = (conds.entry||[]).map(e=>e.resource);
+
+  // 用藥
+  const medList = (meds.entry||[]).map(e=>e.resource);
+
+  // 過敏
+  const allergyList = (allergies.entry||[]).map(e=>e.resource);
+
+  // ── 渲染生理指標 ─────────────────────────────────────────
+  renderVitals(sbpVal, dbpVal, bpDate, hba1cVal, hrVal, glcVal, creatVal);
+
+  // ── 渲染診斷 ─────────────────────────────────────────────
+  renderConditions(condList);
+
+  // ── 渲染用藥 ─────────────────────────────────────────────
+  renderMeds(medList);
+
+  // ── CDS 引擎 ──────────────────────────────────────────────
+  const cdsResult = runCDS(sbpVal, dbpVal, hba1cVal, hrVal, glcVal, creatVal, condList, medList, allergyList, age, patient.gender);
+
+  // ── 安全評分 ──────────────────────────────────────────────
+  renderSafetyScore(cdsResult.score);
+
+  // ── CDS 渲染 ──────────────────────────────────────────────
+  renderCDS(cdsResult);
 }
 
-// ── 衛教區（個人化） ──────────────────────────────────────────
-function updateEducationSection(hba1c) {
-  const container = document.getElementById('education-content');
-  let items = [];
-  if (hba1c === null) {
-    items = [
-      { icon: 'fa-solid fa-circle-info', color: 'text-blue-500', title: '基礎糖尿病知識', desc: '了解飲食、運動與血糖監測的重要性。' },
-      { icon: 'fa-solid fa-dumbbell', color: 'text-teal-600', title: '運動建議', desc: '每週 150 分鐘中強度運動可改善胰島素敏感性。' }
-    ];
-  } else if (hba1c > 8.0) {
-    items = [
-      { icon: 'fa-solid fa-triangle-exclamation', color: 'text-red-500', title: '血糖控制警示', desc: 'HbA1c 顯著偏高，請與醫師討論調整用藥與飲食計畫。' },
-      { icon: 'fa-solid fa-apple-whole', color: 'text-orange-500', title: '立即飲食調整', desc: '減少精製碳水，避免含糖飲料，每餐多吃蔬菜。' },
-      { icon: 'fa-solid fa-syringe', color: 'text-red-400', title: '用藥依從性', desc: '確認是否按時服藥，如有不適請盡早回診。' }
-    ];
-  } else if (hba1c > 7.0) {
-    items = [
-      { icon: 'fa-solid fa-chart-line', color: 'text-amber-500', title: '血糖仍需改善', desc: '目標 HbA1c < 7%，建議加強飲食與運動。' },
-      { icon: 'fa-solid fa-dumbbell', color: 'text-teal-600', title: '增加運動量', desc: '每週至少 150 分鐘快走或游泳，有助降低血糖。' }
-    ];
-  } else {
-    items = [
-      { icon: 'fa-solid fa-circle-check', color: 'text-green-500', title: '血糖控制良好 🎉', desc: '請繼續保持目前的飲食與運動習慣！' },
-      { icon: 'fa-solid fa-shield-halved', color: 'text-blue-500', title: '定期追蹤', desc: '每 3 個月回診追蹤 HbA1c，每年做眼底與腎功能檢查。' }
-    ];
-  }
-  container.innerHTML = items.map(item => `
-    <div class="edu-item flex gap-3 p-3 rounded-xl">
-      <i class="${item.icon} ${item.color} mt-0.5 flex-shrink-0 text-sm"></i>
+// ── 生理指標 ─────────────────────────────────────────────────
+function renderVitals(sbp, dbp, bpDate, hba1c, hr, glc, creat) {
+  const items = [];
+
+  // 血壓
+  if (sbp !== null) {
+    const sbpColor = sbp > 160 ? 'var(--red)' : sbp > 140 ? 'var(--amber)' : 'var(--green)';
+    const sbpBadge = sbp > 160 ? '<span class="badge badge-red">危急</span>' : sbp > 140 ? '<span class="badge badge-amber">偏高</span>' : '<span class="badge badge-green">正常</span>';
+    items.push(`
       <div>
-        <p class="font-semibold text-slate-700 text-sm">${item.title}</p>
-        <p class="text-slate-500 text-xs mt-0.5">${item.desc}</p>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ── CDS ──────────────────────────────────────────────────────
-function updateCDS(hba1c) {
-  const container = document.getElementById('ui-suggestions');
-  const suggestions = [];
-  if (hba1c === null) {
-    suggestions.push({ icon: 'fa-circle-info', color: 'text-slate-400', text: '未能取得 HbA1c 資料，請查看 FHIR 沙盒資料是否完整。' });
-  } else if (hba1c > 8.0) {
-    suggestions.push({ icon: 'fa-triangle-exclamation', color: 'text-red-400', text: `HbA1c ${hba1c.toFixed(1)}% — 顯著偏高，建議積極調整治療方案。` });
-    suggestions.push({ icon: 'fa-pills', color: 'text-amber-400', text: '考慮加強藥物治療，並安排近期複診。' });
-  } else if (hba1c > 7.0) {
-    suggestions.push({ icon: 'fa-triangle-exclamation', color: 'text-amber-400', text: `HbA1c ${hba1c.toFixed(1)}% — 高於 7% 目標值，建議強化飲食控制。` });
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;color:var(--text2)">血壓（收縮/舒張）</span>
+          ${sbpBadge}
+        </div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span class="metric-value" style="font-size:32px;color:${sbpColor}">${sbp}</span>
+          ${dbp !== null ? `<span class="metric-value" style="font-size:20px;color:var(--text2)">/${dbp}</span>` : ''}
+          <span style="font-size:12px;color:var(--text3);margin-left:2px">mmHg</span>
+        </div>
+        ${bpDate ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(bpDate).toLocaleDateString('zh-TW')}</div>` : ''}
+        <div class="progress-bar" style="margin-top:8px">
+          <div class="progress-fill" style="width:${Math.min(sbp/200*100,100)}%;background:${sbpColor}"></div>
+        </div>
+      </div>`);
   } else {
-    suggestions.push({ icon: 'fa-circle-check', color: 'text-green-400', text: `HbA1c ${hba1c.toFixed(1)}% — 達標，維持現有治療計畫。` });
+    items.push(`<div style="padding:12px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--text2);text-align:center">血壓資料未偵測</div>`);
   }
-  suggestions.push({ icon: 'fa-eye', color: 'text-blue-400', text: '確認眼底檢查是否在近 12 個月內完成。' });
-  suggestions.push({ icon: 'fa-shoe-prints', color: 'text-violet-400', text: '每年至少一次足部神經血管評估。' });
 
-  container.innerHTML = suggestions.map(s => `
-    <div class="cds-item flex gap-3 items-start p-3">
-      <i class="fa-solid ${s.icon} ${s.color} mt-0.5 flex-shrink-0 text-sm"></i>
-      <p class="text-slate-300 text-sm leading-relaxed">${s.text}</p>
-    </div>
-  `).join('');
+  // HbA1c
+  if (hba1c !== null) {
+    const c = hba1c > 8 ? 'var(--red)' : hba1c > 7 ? 'var(--amber)' : 'var(--green)';
+    const badge = hba1c > 8 ? '<span class="badge badge-red">控制不佳</span>' : hba1c > 7 ? '<span class="badge badge-amber">需改善</span>' : '<span class="badge badge-green">達標</span>';
+    items.push(`
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;color:var(--text2)">HbA1c 糖化血色素</span>${badge}
+        </div>
+        <div style="display:flex;align-items:baseline;gap:3px">
+          <span class="metric-value" style="font-size:28px;color:${c}">${hba1c.toFixed(1)}</span>
+          <span style="font-size:12px;color:var(--text3)">%</span>
+        </div>
+        <div class="progress-bar" style="margin-top:8px">
+          <div class="progress-fill" style="width:${Math.min(hba1c/12*100,100)}%;background:${c}"></div>
+        </div>
+      </div>`);
+  }
+
+  // 其他指標
+  const extras = [];
+  if (hr !== null) {
+    const hc = hr > 100 ? 'var(--amber)' : hr < 60 ? 'var(--amber)' : 'var(--text)';
+    extras.push(`<div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">心率</div>
+      <div class="metric-value" style="font-size:20px;color:${hc}">${hr}</div>
+      <div style="font-size:10px;color:var(--text3)">bpm</div>
+    </div>`);
+  }
+  if (glc !== null) {
+    const gc = glc > 200 ? 'var(--red)' : glc > 126 ? 'var(--amber)' : glc < 70 ? 'var(--amber)' : 'var(--green)';
+    extras.push(`<div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">血糖</div>
+      <div class="metric-value" style="font-size:20px;color:${gc}">${glc}</div>
+      <div style="font-size:10px;color:var(--text3)">mg/dL</div>
+    </div>`);
+  }
+  if (creat !== null) {
+    const cc = creat > 1.5 ? 'var(--amber)' : creat > 2.0 ? 'var(--red)' : 'var(--text)';
+    extras.push(`<div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">肌酐</div>
+      <div class="metric-value" style="font-size:20px;color:${cc}">${creat}</div>
+      <div style="font-size:10px;color:var(--text3)">mg/dL</div>
+    </div>`);
+  }
+  if (extras.length > 0) {
+    items.push(`<div style="display:flex;gap:8px">${extras.join('')}</div>`);
+  }
+
+  document.getElementById('vitals-content').innerHTML = items.join('') ||
+    `<p style="color:var(--text2);font-size:13px;padding:8px">無生理指標資料</p>`;
 }
 
-// ── 趨勢圖 ────────────────────────────────────────────────────
-function updateChart(data, color) {
-  if (currentChart) currentChart.destroy();
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  const labels = data.map((_, i) => `第 ${i + 1} 次`);
+// ── 診斷 ──────────────────────────────────────────────────────
+function renderConditions(condList) {
+  const countEl = document.getElementById('cond-count');
+  countEl.textContent = condList.length;
 
-  currentChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'HbA1c %',
-        data,
-        borderColor: color,
-        backgroundColor: color + '18',
-        tension: 0.45,
-        fill: true,
-        pointRadius: 6,
-        pointBackgroundColor: '#fff',
-        pointBorderColor: color,
-        pointBorderWidth: 2.5,
-        pointHoverRadius: 8
-      }, {
-        label: '目標線 7%',
-        data: data.map(() => 7.0),
-        borderColor: '#22c55e',
-        borderDash: [5, 4],
-        borderWidth: 1.5,
-        pointRadius: 0,
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true, labels: { boxWidth: 12, font: { size: 11 }, color: '#64748b' } },
-        tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#94a3b8',
-          bodyColor: '#f1f5f9',
-          padding: 10,
-          callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} %` }
-        }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-        y: {
-          min: 5, max: 12,
-          grid: { color: '#f1f5f9', lineWidth: 1 },
-          ticks: { callback: v => v + '%', color: '#94a3b8', font: { size: 11 } }
-        }
+  const html = condList.map(c => {
+    const text = c.code?.text || c.code?.coding?.[0]?.display || '未命名';
+    const sev = c.severity?.text || c.severity?.coding?.[0]?.display;
+    const onset = c.onsetDateTime ? new Date(c.onsetDateTime).toLocaleDateString('zh-TW') : null;
+    const isSevere = sev?.match(/severe|嚴重/i);
+    return `<div class="cond-chip">
+      <i class="fa-solid fa-circle" style="font-size:6px;color:${isSevere?'var(--red)':'var(--blue)'}"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${text}</div>
+        ${sev||onset ? `<div style="font-size:10px;color:var(--text3);margin-top:1px">${sev||''}${sev&&onset?' · ':''}${onset||''}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('') || `<p style="font-size:13px;color:var(--text2);padding:8px">無活動中診斷紀錄</p>`;
+
+  document.getElementById('cond-content').innerHTML = html;
+}
+
+// ── 用藥 ──────────────────────────────────────────────────────
+function renderMeds(medList) {
+  const countEl = document.getElementById('med-count');
+  countEl.textContent = medList.length;
+
+  const html = medList.map(med => {
+    const name = med.medicationCodeableConcept?.text
+      || med.medicationCodeableConcept?.coding?.[0]?.display
+      || med.medicationReference?.display
+      || '未知藥物';
+    const dosage = med.dosageInstruction?.[0]?.text
+      || (med.dosageInstruction?.[0]?.doseAndRate?.[0]?.doseQuantity?.value
+        ? `${med.dosageInstruction[0].doseAndRate[0].doseQuantity.value} ${med.dosageInstruction[0].doseAndRate[0].doseQuantity.unit||''}`
+        : null);
+    const freq = med.dosageInstruction?.[0]?.timing?.code?.text || null;
+
+    // 高警示藥物標記
+    const isHighAlert = HIGH_ALERT_MEDS.some(h => h.keywords.some(k => name.toLowerCase().includes(k.toLowerCase())));
+
+    return `<div class="cond-chip" style="${isHighAlert?'border-color:rgba(210,153,34,0.3);background:var(--amber-dim);':''}">
+      <i class="fa-solid fa-capsules" style="font-size:11px;color:${isHighAlert?'var(--amber)':'var(--violet)'}"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;display:flex;align-items:center;gap:6px">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+          ${isHighAlert ? '<span class="badge badge-amber" style="font-size:9px;padding:1px 6px;flex-shrink:0">高警示</span>' : ''}
+        </div>
+        ${dosage||freq ? `<div style="font-size:10px;color:var(--text3);margin-top:1px">${[dosage,freq].filter(Boolean).join(' · ')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('') || `<p style="font-size:13px;color:var(--text2);padding:8px">無活躍用藥紀錄</p>`;
+
+  document.getElementById('med-content').innerHTML = html;
+}
+
+// ── CDS 規則引擎 ──────────────────────────────────────────────
+function runCDS(sbp, dbp, hba1c, hr, glc, creat, condList, medList, allergyList, age, gender) {
+  const alerts = [];
+  const recommendations = [];
+  let riskScore = 100; // 從 100 扣分
+
+  const medNames = medList.map(m =>
+    (m.medicationCodeableConcept?.text || m.medicationCodeableConcept?.coding?.[0]?.display || '').toLowerCase()
+  );
+  const condNames = condList.map(c =>
+    (c.code?.text || c.code?.coding?.[0]?.display || '').toLowerCase()
+  );
+
+  // ─ 生理指標警示 ─────────────────────────────────────────
+  if (sbp !== null) {
+    if (sbp > 180) {
+      alerts.push({ level:'critical', icon:'fa-triangle-exclamation',
+        title:'高血壓危象', detail:`收縮壓 ${sbp} mmHg，需立即評估急性器官損傷（心臟、腎臟、腦）。考慮靜脈降壓藥物治療。` });
+      riskScore -= 25;
+    } else if (sbp > 160) {
+      alerts.push({ level:'critical', icon:'fa-heart-pulse',
+        title:'嚴重高血壓', detail:`收縮壓 ${sbp} mmHg，建議積極調整降壓藥物，並排查次發性高血壓原因。` });
+      riskScore -= 18;
+    } else if (sbp > 140) {
+      alerts.push({ level:'warning', icon:'fa-circle-exclamation',
+        title:'血壓偏高', detail:`收縮壓 ${sbp} mmHg，目標 <130/80 mmHg。確認用藥依從性及生活型態調整。` });
+      riskScore -= 10;
+    }
+    if (sbp < 90) {
+      alerts.push({ level:'critical', icon:'fa-arrow-trend-down',
+        title:'低血壓警示', detail:`收縮壓 ${sbp} mmHg，需排查低血壓原因（脫水、藥物、心臟功能）。` });
+      riskScore -= 20;
+    }
+  }
+
+  if (hba1c !== null) {
+    if (hba1c > 9) {
+      alerts.push({ level:'critical', icon:'fa-droplet',
+        title:'血糖嚴重失控', detail:`HbA1c ${hba1c.toFixed(1)}%，顯著高於目標值，大幅增加微血管及大血管併發症風險。建議立即回診調整治療方案。` });
+      riskScore -= 20;
+    } else if (hba1c > 8) {
+      alerts.push({ level:'warning', icon:'fa-droplet',
+        title:'血糖控制不佳', detail:`HbA1c ${hba1c.toFixed(1)}%，超過安全目標（<7%）。需強化飲食控制並評估是否調整降糖藥物。` });
+      riskScore -= 12;
+    }
+  }
+
+  if (hr !== null) {
+    if (hr > 120) {
+      alerts.push({ level:'warning', icon:'fa-heart',
+        title:'心搏過速', detail:`心率 ${hr} bpm，需排查原因（發燒、貧血、心房顫動、藥物、甲狀腺亢進）。` });
+      riskScore -= 8;
+    }
+    if (hr < 50) {
+      alerts.push({ level:'warning', icon:'fa-heart',
+        title:'心搏過緩', detail:`心率 ${hr} bpm，需評估是否由 Beta-blocker 或 Digoxin 過量引起。` });
+      riskScore -= 8;
+    }
+  }
+
+  if (glc !== null) {
+    if (glc < 70) {
+      alerts.push({ level:'critical', icon:'fa-bolt',
+        title:'低血糖', detail:`血糖 ${glc} mg/dL，立即補充 15g 快速糖分（葡萄糖片/方糖），15 分鐘後再測。若無改善需就醫。` });
+      riskScore -= 20;
+    } else if (glc > 300) {
+      alerts.push({ level:'critical', icon:'fa-droplet',
+        title:'嚴重高血糖', detail:`血糖 ${glc} mg/dL，需排查酮酸中毒（DKA）或高血糖高滲透壓狀態（HHS），考慮急診評估。` });
+      riskScore -= 18;
+    }
+  }
+
+  if (creat !== null && creat > 2.0) {
+    alerts.push({ level:'warning', icon:'fa-kidney',
+      title:'腎功能異常', detail:`血肌酐 ${creat} mg/dL，需評估 eGFR 並調整腎排泄藥物劑量（Metformin、部分抗生素、DOAC）。` });
+    riskScore -= 12;
+  }
+
+  // ─ 高警示藥物 ─────────────────────────────────────────
+  medList.forEach(med => {
+    const name = (med.medicationCodeableConcept?.text || med.medicationCodeableConcept?.coding?.[0]?.display || '').toLowerCase();
+    HIGH_ALERT_MEDS.forEach(ha => {
+      if (ha.keywords.some(k => name.includes(k.toLowerCase()))) {
+        const level = ha.level;
+        const dispName = med.medicationCodeableConcept?.text || med.medicationCodeableConcept?.coding?.[0]?.display || name;
+        alerts.push({ level, icon:'fa-capsules',
+          title:`高警示藥物：${dispName}`,
+          detail: ha.reason });
+        if (level === 'critical') riskScore -= 8;
+        else if (level === 'warning') riskScore -= 4;
       }
+    });
+  });
+
+  // ─ 藥物交互作用 ─────────────────────────────────────────
+  DRUG_INTERACTIONS.forEach(rule => {
+    const hasDrug = rule.drugs.some(d => medNames.some(mn => mn.includes(d.toLowerCase())));
+    const hasFlagWith = rule.flagWith.some(d => medNames.some(mn => mn.includes(d.toLowerCase())));
+    if (hasDrug && hasFlagWith) {
+      alerts.push({ level: rule.severity, icon:'fa-triangle-exclamation',
+        title:'藥物交互作用', detail: rule.msg });
+      riskScore -= rule.severity === 'critical' ? 15 : 8;
     }
   });
+
+  // ─ 過敏警示 ─────────────────────────────────────────────
+  allergyList.forEach(al => {
+    const substance = al.code?.text || al.code?.coding?.[0]?.display || '未知物質';
+    const critStatus = al.criticality;
+    if (critStatus === 'high' || critStatus === 'unable-to-assess') {
+      alerts.push({ level:'critical', icon:'fa-allergies',
+        title:`嚴重過敏：${substance}`,
+        detail:`此病患對 ${substance} 有嚴重過敏紀錄，處方前請確認所有藥物成分。` });
+      riskScore -= 10;
+    }
+  });
+
+  // ─ 老年特殊考量 ──────────────────────────────────────────
+  if (age !== null && age >= 65) {
+    const beersMeds = medNames.filter(mn =>
+      ['benzodiazepine','diazepam','lorazepam','diphenhydramine','苯海拉明',
+       'amitriptyline','tricyclic'].some(k => mn.includes(k))
+    );
+    if (beersMeds.length > 0) {
+      alerts.push({ level:'warning', icon:'fa-person-cane',
+        title:`老年用藥警示（Beers Criteria）`,
+        detail:`偵測到 Beers Criteria 高風險藥物，高齡患者使用可能增加跌倒、認知障礙、尿滯留等風險，建議評估替代用藥。` });
+      riskScore -= 10;
+    }
+  }
+
+  // ─ 診斷驅動建議 ─────────────────────────────────────────
+  condList.forEach(c => {
+    const text = c.code?.text || c.code?.coding?.[0]?.display || '';
+    Object.keys(CONDITION_RECOMMENDATIONS).forEach(key => {
+      if (text.toLowerCase().includes(key.toLowerCase())) {
+        const rec = CONDITION_RECOMMENDATIONS[key];
+        recommendations.push({ icon: rec.icon, color: rec.color, title: `${text}：管理建議`, text: rec.text });
+      }
+    });
+  });
+
+  // ─ 生理指標建議（補充） ───────────────────────────────────
+  if (hba1c !== null && hba1c > 7 && !recommendations.some(r => r.title.includes('血糖') || r.title.includes('糖尿'))) {
+    recommendations.push({ icon:'fa-droplet', color:'var(--amber)', title:'血糖管理', text:'HbA1c 超標，建議每日監測血糖，記錄飲食日誌，並與醫師評估藥物調整必要性。' });
+  }
+  if (sbp !== null && sbp > 140 && !recommendations.some(r => r.title.includes('血壓') || r.title.includes('高血壓'))) {
+    recommendations.push({ icon:'fa-heart', color:'var(--blue)', title:'血壓控制', text:'目標血壓 <130/80 mmHg。低鈉飲食（≤2g/日）、規律有氧運動、體重管理、限制酒精攝取。' });
+  }
+  if (medList.length > 5) {
+    recommendations.push({ icon:'fa-list-check', color:'var(--violet)', title:'多重用藥評估', text:`目前有 ${medList.length} 項活躍用藥，建議定期進行全面藥物審查（Medication Reconciliation），減少不必要用藥。` });
+    riskScore -= 5;
+  }
+  if (recommendations.length === 0) {
+    recommendations.push({ icon:'fa-circle-check', color:'var(--green)', title:'目前無特殊臨床建議', text:'生理指標及用藥暫未觸發特定建議，請維持定期回診追蹤。' });
+  }
+  if (creat !== null && creat > 1.2) {
+    recommendations.push({ icon:'fa-kidney', color:'var(--violet)', title:'腎功能監測', text:'定期追蹤 eGFR 及尿液微量白蛋白。避免 NSAIDs，確認 Metformin 及其他腎排泄藥物劑量適切性。' });
+  }
+
+  // 最終評分夾值
+  riskScore = Math.max(5, Math.min(100, riskScore));
+
+  return { alerts, recommendations, score: riskScore, medCount: medList.length, alertCount: alerts.length };
 }
 
-// ── Modal ────────────────────────────────────────────────────
-function showEducationModal() {
-  const modal = document.getElementById('education-modal');
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+// ── 安全評分環 ───────────────────────────────────────────────
+function renderSafetyScore(score) {
+  const r = 40, cx = 48, cy = 48;
+  const circ = 2 * Math.PI * r;
+  const fill = circ * (1 - score / 100);
+  const color = score >= 80 ? '#3fb950' : score >= 60 ? '#d29922' : '#f85149';
+  document.getElementById('safety-score-box').innerHTML = `
+    <div class="score-ring">
+      <svg width="96" height="96" viewBox="0 0 96 96">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="6"
+          stroke-dasharray="${circ}" stroke-dashoffset="${fill}"
+          stroke-linecap="round" style="transition:stroke-dashoffset 1.2s ease"/>
+      </svg>
+      <div class="score-num" style="color:${color}">${score}</div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">安全評分</div>
+  `;
 }
-function hideEducationModal() {
-  const modal = document.getElementById('education-modal');
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
-}
-function switchEduTab(tab) {
-  document.querySelectorAll('.edu-tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  event.currentTarget.classList.add('active');
+
+// ── CDS 渲染 ─────────────────────────────────────────────────
+function renderCDS(cdsResult) {
+  const { alerts, recommendations, medCount, alertCount } = cdsResult;
+
+  // 摘要 badge
+  const summaryDiv = document.getElementById('cds-summary-badges');
+  const critCount = alerts.filter(a=>a.level==='critical').length;
+  const warnCount = alerts.filter(a=>a.level==='warning').length;
+  summaryDiv.innerHTML = [
+    critCount > 0 ? `<span class="badge badge-red"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> 危急 ${critCount}</span>` : '',
+    warnCount > 0 ? `<span class="badge badge-amber"><i class="fa-solid fa-circle-exclamation" style="font-size:9px"></i> 警示 ${warnCount}</span>` : '',
+    `<span class="badge badge-gray">用藥 ${medCount} 項</span>`,
+    critCount === 0 && warnCount === 0 ? `<span class="badge badge-green">無高風險警示</span>` : ''
+  ].filter(Boolean).join('');
+
+  // 安全警告
+  const alertsDiv = document.getElementById('safety-alerts');
+  if (alerts.length === 0) {
+    alertsDiv.innerHTML = `
+      <div class="alert-card alert-success">
+        <i class="fa-solid fa-shield-check alert-icon"></i>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--green)">用藥安全：無明顯警示</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">目前分析之生理指標、用藥紀錄及診斷未觸發安全警告。</div>
+        </div>
+      </div>`;
+  } else {
+    alertsDiv.innerHTML = alerts.map(a => {
+      const cls = a.level==='critical'?'alert-critical':a.level==='warning'?'alert-warning':a.level==='med'?'alert-med':'alert-info';
+      const titleColor = a.level==='critical'?'var(--red)':a.level==='warning'?'var(--amber)':'var(--blue)';
+      const pulse = a.level==='critical' ? '<span class="pulse-red"></span>' : a.level==='warning' ? '<span class="pulse-amber"></span>' : '';
+      return `
+        <div class="alert-card ${cls}">
+          <i class="fa-solid ${a.icon} alert-icon"></i>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              ${pulse}
+              <span style="font-size:13px;font-weight:700;color:${titleColor}">${a.title}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">${a.detail}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // 個人化建議
+  const recsDiv = document.getElementById('cds-recommendations');
+  recsDiv.innerHTML = recommendations.map(r => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:10px;align-items:flex-start;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:28px;height:28px;border-radius:7px;background:${r.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ${r.color}44">
+        <i class="fa-solid ${r.icon}" style="font-size:12px;color:${r.color}"></i>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">${r.title}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.65">${r.text}</div>
+      </div>
+    </div>`).join('');
 }
 
 // ── 啟動 ──────────────────────────────────────────────────────
-window.onload = initApp;
+window.onload = init;
 </script>
 </body>
 </html>
